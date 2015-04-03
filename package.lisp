@@ -1,0 +1,3 @@
+(defpackage #:embdoc
+  (:use #:cl))
+
