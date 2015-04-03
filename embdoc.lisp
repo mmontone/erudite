@@ -6,7 +6,7 @@
       (setf (fill-pointer seq) (read-sequence seq stream))
       seq)))
 
-(defun parse-string (string)
+(defun parse-lisp-source (string)
   (loop
      :with fragments = nil
      :with prev-char = nil
