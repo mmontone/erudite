@@ -72,3 +72,12 @@
 		(:code (format nil ".. code-block:: common-lisp~%~%     ~A"
 			       (indent-code (second fragment))))
 		(:doc (second fragment))))))
+
+(defun gen-latex-doc (fragments)
+  (apply #'concatenate 'string
+	 (loop for fragment in fragments
+	      collect
+	      (ecase (first fragment)
+		(:code (format nil "\\begin{verbatim}~%~A~%\\end{verbatim}"
+			       (second fragment)))
+		(:doc (second fragment))))))
