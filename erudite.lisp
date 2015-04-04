@@ -64,7 +64,7 @@
 		     (format nil "     ~A~%" line))
 		   lines))))
 
-(defun gen-sphinx-doc (fragments)
+(defun compile-sphinx-fragments (fragments)
   (apply #'concatenate 'string
 	 (loop for fragment in fragments
 	    collect
@@ -103,5 +103,27 @@
 			       :body (compile-latex-fragments fragments)))
        f))
     t))
+
+(defun gen-sphinx-doc (pathname files &key prelude postlude)
+  (let ((fragments
+	 (loop for file in files
+	    appending
+	      (parse-lisp-source (file-to-string file)))))
+    (with-open-file (f pathname :direction :output 
+		       :if-exists :supersede
+		       :if-does-not-exist :create)
+      (when prelude
+	(write-string 
+	 (if (pathnamep prelude)
+	     (file-to-string prelude)
+	     prelude)
+	 f))
+      (write-string (compile-sphinx-fragments fragments) f)
+      (when postlude
+	(write-string (if (pathnamep postlude)
+			  (file-to-string postlude)
+			  postlude)
+		      f)))))
+
       
 
