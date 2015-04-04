@@ -75,7 +75,7 @@
 					     (second fragment)))))
 		(:doc (second fragment))))))
 
-(defun gen-latex-doc (fragments)
+(defun compile-latex-fragments (fragments)
   (apply #'concatenate 'string
 	 (loop for fragment in fragments
 	      collect
@@ -84,3 +84,24 @@
 			       (string-trim (list #\  #\newline) 
 					    (second fragment))))
 		(:doc (second fragment))))))
+
+(defun gen-latex-doc (pathname files &key title author)
+  (let ((template (cl-template:compile-template
+		   (file-to-string (asdf:system-relative-pathname 
+				    :erudite 
+				    "latex/template.tex"))))
+	(fragments
+	 (loop for file in files
+	    appending
+	      (parse-lisp-source (file-to-string file)))))
+    (with-open-file (f pathname :direction :output 
+		       :if-exists :supersede
+		       :if-does-not-exist :create)
+      (write-string
+       (funcall template (list :title title
+			       :author author
+			       :body (compile-latex-fragments fragments)))
+       f))
+    t))
+      
+

@@ -8,4 +8,5 @@
   :depends-on (:cl-fad
 	       :cl-ppcre
 	       :alexandria
-	       :split-sequence))
+	       :split-sequence
+	       :cl-template))

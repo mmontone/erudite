@@ -1,0 +1,26 @@
+\documentclass[11pt,pdflatex,makeidx]{book}   % Book class in 11 points
+\usepackage[margin=0.5in]{geometry}
+\usepackage{makeidx}
+\usepackage{hyperref}
+\usepackage{listings}
+\lstloadlanguages{Lisp}
+\lstset{frame=L,language=Lisp,
+  stringstyle=\ttfamily\small,basicstyle=\ttfamily\footnotesize,
+  showstringspaces=false,breaklines}
+\lstnewenvironment{code}{}{}
+\parindent0pt  \parskip10pt             % make block paragraphs
+\raggedright                            % do not right justify
+\title{\bf <%= (@ title)%>}
+\author{<%= (@ author) %>}
+\date{\today}                           %   Use current date.
+% Note that book class by default is formatted to be printed back-to-back.
+\makeindex
+\begin{document}                        % End of preamble, start of text.
+\frontmatter                            % only in book class (roman page #s)
+\maketitle                              % Print title page.
+\tableofcontents                        % Print table of contents
+\mainmatter                             % only in book class (arabic page #s)
+\long\def\ignore#1{}
+<%= (@ body) %>                             % ignore macro
+\printindex
+\end{document}
