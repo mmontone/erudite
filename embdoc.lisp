@@ -78,6 +78,7 @@
 	 (loop for fragment in fragments
 	      collect
 	      (ecase (first fragment)
-		(:code (format nil "\\begin{verbatim}~%~A~%\\end{verbatim}"
-			       (second fragment)))
+		(:code (format nil "\\begin{code}~%~A~%\\end{code}"
+			       (string-trim (list #\  #\newline) 
+					    (second fragment))))
 		(:doc (second fragment))))))
