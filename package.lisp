@@ -1,4 +1,4 @@
-(defpackage #:embdoc
+(defpackage #:erudite
   (:use #:cl)
   (:export #:parse-lisp-source
 	   #:file-to-string

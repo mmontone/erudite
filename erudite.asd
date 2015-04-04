@@ -1,10 +1,10 @@
-(asdf:defsystem #:cl-embdoc
-  :description "Describe cl-embdoc here"
+(asdf:defsystem #:erudite
+  :description "Poor Lisper's Literate Programming System"
   :author "Mariano Montone <marianomontone@gmail.com>"
   :license "MIT"
   :serial t
   :components ((:file "package")
-               (:file "embdoc"))
+               (:file "erudite"))
   :depends-on (:cl-fad
 	       :cl-ppcre
 	       :alexandria

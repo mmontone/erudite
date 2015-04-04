@@ -1,1 +1,1 @@
-This is the stub README.txt for the "cl-embdoc" project.
+Poor Lisper's Literate Programming System

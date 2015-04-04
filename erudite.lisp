@@ -1,4 +1,4 @@
-(in-package #:embdoc)
+(in-package #:erudite)
 
 (defun file-to-string (pathname)
   (with-open-file (stream pathname)
