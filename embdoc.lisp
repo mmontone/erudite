@@ -70,7 +70,9 @@
 	    collect
 	      (ecase (first fragment)
 		(:code (format nil ".. code-block:: common-lisp~%~%     ~A"
-			       (indent-code (second fragment))))
+			       (indent-code 
+				(string-trim (list #\  #\newline) 
+					     (second fragment)))))
 		(:doc (second fragment))))))
 
 (defun gen-latex-doc (fragments)
