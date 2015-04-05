@@ -2,7 +2,7 @@
 
 Erudite is a simple Literate Programming system for Common Lisp.
 
-[https://github.com/cldm/erudite/raw/master/doc/erudite.pdf](Example output)
+[Example output](https://github.com/cldm/erudite/raw/master/doc/erudite.pdf)
 
 ## Functions
 ### gen-latex-doc
