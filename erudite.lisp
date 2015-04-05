@@ -35,6 +35,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 |#
 
 (defun parse-lisp-source (string)
+  "Parses a lisp file source string into :code and :doc fragments"
   (loop
      :with fragments = nil
      :with prev-char = nil
@@ -95,6 +96,7 @@ The parsed fragments are compiled to latex code. That means embedding the code f
 |#
 
 (defun compile-latex-fragments (fragments)
+  "Prepare parsed fragments to be compiled to LaTeX"
   (apply #'concatenate 'string
 	 (loop for fragment in fragments
 	      collect
@@ -111,6 +113,13 @@ To generate LaTeX, the \emph{gen-latex-doc} function is called:
 |#
 
 (defun gen-latex-doc (pathname files &key title author template-pathname)
+  "Generates a LaTeX document.
+
+   Args: - pathname: The pathname of the .tex file to generate.
+         - files: The list of .lisp files to compile
+         - title: Title of the document
+         - author: Author of the document
+         - template-pathname: A custom LaTeX template file. If none is specified, a default template is used."
   (let ((template (cl-template:compile-template
 		   (file-to-string (or template-pathname
 				       (asdf:system-relative-pathname 
@@ -141,6 +150,7 @@ Code fragments in Sphinx must appear indented after a \verb'.. code-block::' dir
 |#
 
 (defun compile-sphinx-fragments (fragments)
+  "Prepares parsed fragments for Sphinx generation"
   (apply #'concatenate 'string
 	 (loop for fragment in fragments
 	    collect
@@ -173,6 +183,12 @@ To generate Sphinx code, \emph{gen-sphinx-doc} is called.
 |#
 
 (defun gen-sphinx-doc (pathname files &key prelude postlude)
+  "Generates Sphinx document.
+
+   Args: - pathname: Pathname of the .rst file to generate.
+         - files: .lisp files to compile.
+         - prelude: String (or pathname) to append before the Sphinx document.
+         - postlude: String (or pathname) to append after the Sphinx document."
   (let ((fragments
 	 (loop for file in files
 	    appending
