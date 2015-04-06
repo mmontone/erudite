@@ -56,6 +56,8 @@ Some TODOs and ideas:
             @item Item 2
          @ref my-function
 
+IDEA for this:  make the '@' or '\' character configurable.
+
 * Use some kind of reader syntax?
     - Look at: https://www.cs.utah.edu/plt/publications/icfp09-fbf.pdf
 
