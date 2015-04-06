@@ -9,7 +9,9 @@ Some TODOs and ideas:
     - @chunk - Define a chunk
     - @ignore - Ignore a piece of text
     - @include - Include files for literate processing
-    - @echo - Display a chunk
+    - @show-chunk - Display a chunk
+    - @define - Define a 'definition'. Names a piece of code and removes it to be inserted later by @insert (see LP/Lisp paper)
+    - @insert - Inserts a defined piece of text
     - ...
 
     Look at PL/Lisp list of commands
