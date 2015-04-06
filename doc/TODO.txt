@@ -44,6 +44,7 @@ Some TODOs and ideas:
 
          \include{my-file}
          \chunk[my-chunk]{...}
+         \ref{my-function}
 
    - Tags like (PL/Lisp version 2):
          @include my-file
@@ -53,6 +54,7 @@ Some TODOs and ideas:
          @itemize
             @item Item 1
             @item Item 2
+         @ref my-function
 
 * Use some kind of reader syntax?
     - Look at: https://www.cs.utah.edu/plt/publications/icfp09-fbf.pdf
