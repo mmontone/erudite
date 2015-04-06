@@ -1,0 +1,54 @@
+Some TODOs and ideas:
+
+* Implement documentation chunks
+* Look here for inspiration: 
+   - http://mainesail.umcs.maine.edu/software/LPLisp/
+   - http://mainesail.umcs.maine.edu/pubs/Papers/2010/ilc2010.pdf
+
+* Implement commands:
+    - @chunk - Define a chunk
+    - @ignore - Ignore a piece of text
+    - @include - Include files for literate processing
+    - @echo - Display a chunk
+    - ...
+
+    Look at PL/Lisp list of commands
+
+* Allow nested chunks?
+
+* A PEG parser? (esrap)
+
+* Ensure the library is portable (use cl-ppcre, esrap, clon, etc)
+
+* Command line interface via Clon
+
+* Single function with input/output type selection:
+
+    (erudite *out* *my-files* :input-type :latex)
+    (erudite *out* *my-files* :input-type :sphinx)
+    (erudite *out* *my-files* :input-type :html)
+    (erudite *out* *my-files* :input-type :markdown)
+
+* Custom syntax for multiple output types generation?:
+    
+    (erudite *out* *my-files* :input-type :erudite :output-type :latex)
+    (erudite *out* *my-files* :input-type :erudite :output-type :sphinx)
+    (erudite *out* *my-files* :input-type :erudite :output-type :html)
+    (erudite *out* *my-files* :input-type :erudite :output-type :markdown)
+
+* Custom syntax look like?:
+
+   - Latex like:
+
+         \include{my-file}
+         \chunk[my-chunk]{...}
+
+   - Tags like (PL/Lisp version 2):
+         @include my-file
+         @chunk
+            ...
+         @end chunk
+         @itemize
+            @item Item 1
+            @item Item 2
+
