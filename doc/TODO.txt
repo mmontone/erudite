@@ -52,3 +52,6 @@ Some TODOs and ideas:
             @item Item 1
             @item Item 2
 
+* Use some kind of reader syntax?
+    - Look at: https://www.cs.utah.edu/plt/publications/icfp09-fbf.pdf
+
