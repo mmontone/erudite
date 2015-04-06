@@ -73,4 +73,31 @@ Some TODOs and ideas:
 
   Options that don't apply to a particular input or output are ignored (maybe with a warning?)
 
+* Emacs function to process and view the resulting pdf? (like in pbook.el)
+
+  For example, this is a slightly modified version of what's in pbook.el:
+
+(defun pbook-buffer-view-pdf ()
+  "Generate and display PDF from the current buffer.
+The intermediate files are created in the standard temporary
+directory."
+  (interactive)
+  (save-window-excursion
+    (pbook-buffer))
+  (with-current-buffer "*pbook*"
+    (let ((texfile (pbook-tmpfile "pbook" "tex"))
+          (pdffile (pbook-tmpfile "pbook" "pdf"))
+	  (idxfile (pbook-tmpfile "pbook" "idx")))
+      (write-region (point-min) (point-max) texfile)
+      ;; Possibly there is a better way to ensure that LaTeX generates
+      ;; the table of contents correctly than to run it more than
+      ;; once, but I don't know one.
+      (shell-command (format "\
+  cd /tmp; latex %s && \
+  pdflatex %s"
+                             texfile
+			     texfile))
+      (find-file pdffile))))
+
+
 
