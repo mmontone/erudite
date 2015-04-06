@@ -55,3 +55,22 @@ Some TODOs and ideas:
 * Use some kind of reader syntax?
     - Look at: https://www.cs.utah.edu/plt/publications/icfp09-fbf.pdf
 
+* Assume #| |# and ;;; (three colons) comments (like in pbook.el) contain literate text. Maybe let the user configure that too? (for ;;, etc)
+
+* Allow different options depending on the type of input and output. So, this should be the signature:
+
+       (erudite out files &rest options)
+
+  with options being :input-type, :output-type, plus specific options for input type and output-type.
+
+  Example:
+
+       (erudite out files :input-type :latex :document-class :book
+                                             :listings t
+                                             :date "\\today"
+                                             :author "Mariano Montone"
+                                             :margins "0.5")
+
+  Options that don't apply to a particular input or output are ignored (maybe with a warning?)
+
+
