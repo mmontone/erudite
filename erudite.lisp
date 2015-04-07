@@ -18,12 +18,6 @@ Some of its salient features are:
 |#
 (in-package #:erudite)
 
-(defun file-to-string (pathname)
-  (with-open-file (stream pathname)
-    (let ((seq (make-array (file-length stream) :element-type 'character :fill-pointer t)))
-      (setf (fill-pointer seq) (read-sequence seq stream))
-      seq)))
-
 #|
 }
 
@@ -34,56 +28,60 @@ Implementation is very ad-hoc at the moment.
 First, files with literate code are parsed into \emph{fragments}. Fragments can be of type \textit{documentation} or type \textit{code}. \textit{documentation} is the text that appears in Common Lisp comments. \textit{code} fragments are the rest.
 |#
 
-(defun parse-lisp-source (string)
-  "Parses a lisp file source string into :code and :doc fragments"
-  (loop
-     :with fragments = nil
-     :with prev-char = nil
-     :with mode = :code
-     :with fragment = nil
-     :for char :across string
-     :do
-     ;(format t "prevchar: ~A char: ~A  mode: ~A~%" prev-char char mode)
-     (cond
-       ((and (equalp prev-char #\#)
-             (char= char #\|)
-             (equalp mode :code))
-        ;; Documentation fragment starts
-        (setf mode :doc)
-        (unless (null fragment)
-          (push (list :code (coerce fragment 'string)) fragments)
-          (setf fragment nil)
-	  (setf char nil)))
-       ((and (equalp prev-char #\|)
-             (char= char #\#)
-             (equalp mode :doc))
-        ;; Documentation fragment ends
-        (setf mode :code)
-        (unless (null fragment)
-          (push (list :doc (coerce fragment 'string)) fragments)
-          (setf fragment nil)
-	  (setf char nil)))
-       ((and (equalp mode :code)
-	     (equalp prev-char #\#)
-	     (not (equalp char #\|)))
-	;; False documentation start
-	(setf fragment (append fragment (list prev-char char))))
-       ((and (equalp mode :doc)
-	     (equalp prev-char #\|)
-	     (not (equalp char #\#)))
-	;; False documentation end
-	(setf fragment (append fragment (list prev-char char))))
-       ((member char (list #\# #\|) :test #'char=)
-	;; Dont output, could be special characters
-	)
-       (t
-        ;; Accumulate char in current fragment
-        (setf fragment (append fragment (list char)))))
-     (setf prev-char char)
-     :finally (unless (null fragment)
-                (push (list mode (coerce fragment 'string)) fragments))
-     (return (reverse fragments))))
+(defvar *commands* (make-hash-table :test #'equalp))
 
+(defun find-command (name &optional (error-p t))
+  (let ((command (gethash name *commands*)))
+    (when (and error-p (not command))
+      (error "Invalid command: ~A" command))
+    command))
+
+;;; The parser works like a custom look-ahead parser, with a whole file line
+;;; being the slice looked ahead.
+
+(defun parse-file-source (stream)
+  "Parses a lisp file source"
+  (loop 
+     :for line := (read-line stream nil)
+     :while line
+     :collect
+     (parse-line line stream)))
+
+(defun parse-line (line stream)
+  (or
+   (parse-long-comment line stream)
+   (parse-short-comment line stream)
+   (parse-code line stream)))
+
+(defun parse-long-comment (line stream)
+  "Parse a comment between #| and |#"
+  
+  ;; TODO: this does not work for long comments in one line
+  (when (equalp (search "#|" (string-left-trim (list #\  ) line))
+		0)
+    ;; We've found a long comment
+    ;; Extract the comment source
+    (let ((comment
+	   (with-output-to-string (s)
+	     ;;; First, add the first comment line
+	     (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
+	       (write-string comment-line s))
+	     ;; While there are lines without |#, add them to the comment source
+	     (loop 
+		:for line := (read-line stream nil)
+		:while (and line (not (search "|#" line)))
+		:do 
+		(terpri s)
+		(write-string line s)
+		:finally
+		;; Finally, extract the last comment line
+		(if line
+		  (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
+		    (when comment-line
+		      (write-string comment-line s)))
+		  (error "EOF: Could not complete comment parsing"))))))
+      (list :doc comment))))
+      
 #|
 
 \chapter{Backends}
