@@ -29,6 +29,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 |#
 
 (defvar *commands* (make-hash-table :test #'equalp))
+(defvar *short-comments-prefix* ";;")
 
 (defun find-command (name &optional (error-p t))
   (let ((command (gethash name *commands*)))
@@ -57,7 +58,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   "Parse a comment between #| and |#"
   
   ;; TODO: this does not work for long comments in one line
-  (when (equalp (search "#|" (string-left-trim (list #\  ) line))
+  (when (equalp (search "#|" (string-left-trim (list #\  #\tab) line))
 		0)
     ;; We've found a long comment
     ;; Extract the comment source
@@ -80,6 +81,18 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 		    (when comment-line
 		      (write-string comment-line s)))
 		  (error "EOF: Could not complete comment parsing"))))))
+      (list :doc comment))))
+
+(defun parse-short-comment (line stream)
+  (when (search *short-comments-prefix* 
+		(string-left-trim (list #\  #\tab)
+				  line))
+    ;; A short comment was found
+    (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
+	   (comment
+	   (with-output-to-string (s)
+	     (register-groups-bind (comment-line) (comment-regex line)
+	       (write-string comment-line s)))))
       (list :doc comment))))
       
 #|

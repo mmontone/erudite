@@ -39,4 +39,14 @@ a long comment")))
 	 (erudite::parse-long-comment (read-line s) s))
        '(:DOC "this is a long comment in one line"))))
 
-
+(test parse-short-comment-test
+  (is (equalp
+       (with-input-from-string (s ";; a short comment")
+	 (erudite::parse-short-comment (read-line s) s))
+       '(:doc "a short comment")))
+  (is (null 
+       (with-input-from-string (s ";;; a short comment")
+	 (erudite::parse-short-comment (read-line s) s))))
+  (is (null
+       (with-input-from-string (s "a short comment")
+	 (erudite::parse-short-comment (read-line s) s)))))
