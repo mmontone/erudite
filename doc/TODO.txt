@@ -12,6 +12,7 @@ Some TODOs and ideas:
     - @show-chunk - Display a chunk
     - @define - Define a 'definition'. Names a piece of code and removes it to be inserted later by @insert (see LP/Lisp paper)
     - @insert - Inserts a defined piece of text
+    - @doc - At the beggining of a comment. To parse as literate doc if implicit comments are disabled.
     - ...
 
     Look at PL/Lisp list of commands
