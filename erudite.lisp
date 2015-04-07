@@ -40,13 +40,14 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 ;;; The parser works like a custom look-ahead parser, with a whole file line
 ;;; being the slice looked ahead.
 
-(defun parse-file-source (stream)
-  "Parses a lisp file source"
-  (loop 
-     :for line := (read-line stream nil)
-     :while line
-     :collect
-     (parse-line line stream)))
+(defun split-file-source (stream)
+  "Splits a file source in docs and code"
+  (append-source-parts
+   (loop
+      :for line := (read-line stream nil)
+      :while line
+      :collect
+      (parse-line line stream))))
 
 (defun parse-line (line stream)
   (or
@@ -56,45 +57,78 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 
 (defun parse-long-comment (line stream)
   "Parse a comment between #| and |#"
-  
+
   ;; TODO: this does not work for long comments in one line
   (when (equalp (search "#|" (string-left-trim (list #\  #\tab) line))
-		0)
+                0)
     ;; We've found a long comment
     ;; Extract the comment source
     (let ((comment
-	   (with-output-to-string (s)
-	     ;;; First, add the first comment line
-	     (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
-	       (write-string comment-line s))
-	     ;; While there are lines without |#, add them to the comment source
-	     (loop 
-		:for line := (read-line stream nil)
-		:while (and line (not (search "|#" line)))
-		:do 
-		(terpri s)
-		(write-string line s)
-		:finally
-		;; Finally, extract the last comment line
-		(if line
-		  (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
-		    (when comment-line
-		      (write-string comment-line s)))
-		  (error "EOF: Could not complete comment parsing"))))))
+           (with-output-to-string (s)
+             ;;; First, add the first comment line
+             (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
+               (write-string comment-line s))
+             ;; While there are lines without |#, add them to the comment source
+             (loop
+                :for line := (read-line stream nil)
+                :while (and line (not (search "|#" line)))
+                :do
+                (terpri s)
+                (write-string line s)
+                :finally
+                ;; Finally, extract the last comment line
+                (if line
+                    (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
+                      (when comment-line
+                        (write-string comment-line s)))
+                    (error "EOF: Could not complete comment parsing"))))))
       (list :doc comment))))
 
 (defun parse-short-comment (line stream)
-  (when (search *short-comments-prefix* 
-		(string-left-trim (list #\  #\tab)
-				  line))
+  (when (search *short-comments-prefix*
+                (string-left-trim (list #\  #\tab)
+                                  line))
     ;; A short comment was found
     (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
-	   (comment
-	   (with-output-to-string (s)
-	     (register-groups-bind (comment-line) (comment-regex line)
-	       (write-string comment-line s)))))
+           (comment
+            (with-output-to-string (s)
+              (register-groups-bind (comment-line) (comment-regex line)
+                (write-string comment-line s)))))
       (list :doc comment))))
-      
+
+(defun parse-code (line stream)
+  (list :code line))
+
+(defun append-to-end (thing list)
+  (cond
+    ((null list)
+     (list thing))
+    (t
+     (setf (cdr (last list))
+           (list thing))
+     list)))
+
+(defun append-source-parts (parts)
+  "Append docs and code parts"
+  (let ((appended-parts nil)
+        (current-part (first parts)))
+    (loop
+       :for part :in (cdr parts)
+       :do
+       (if (equalp (first part) (first current-part))
+           ;; The parts are of the same type. Append them
+           (setf (second current-part)
+                 (with-output-to-string (s)
+                   (write-string (second current-part) s)
+                   (terpri s)
+                   (write-string (second part) s)))
+           ;; else, there's a new kind of part
+           (progn
+             (setf appended-parts (append-to-end current-part appended-parts))
+             (setf current-part part)))
+       :finally (append-to-end current-part appended-parts))
+    appended-parts))
+
 #|
 
 \chapter{Backends}
@@ -109,13 +143,13 @@ The parsed fragments are compiled to latex code. That means embedding the code f
 (defun compile-latex-fragments (fragments)
   "Prepare parsed fragments to be compiled to LaTeX"
   (apply #'concatenate 'string
-	 (loop for fragment in fragments
-	      collect
-	      (ecase (first fragment)
-		(:code (format nil "\\begin{code}~%~A~%\\end{code}"
-			       (string-trim (list #\  #\newline) 
-					    (second fragment))))
-		(:doc (second fragment))))))
+         (loop for fragment in fragments
+            collect
+              (ecase (first fragment)
+                (:code (format nil "\\begin{code}~%~A~%\\end{code}"
+                               (string-trim (list #\  #\newline)
+                                            (second fragment))))
+                (:doc (second fragment))))))
 
 #|
 
@@ -132,21 +166,21 @@ To generate LaTeX, the \emph{gen-latex-doc} function is called:
          - author: Author of the document
          - template-pathname: A custom LaTeX template file. If none is specified, a default template is used."
   (let ((template (cl-template:compile-template
-		   (file-to-string (or template-pathname
-				       (asdf:system-relative-pathname 
-					:erudite 
-					"latex/template.tex")))))
-	(fragments
-	 (loop for file in files
-	    appending
-	      (parse-lisp-source (file-to-string file)))))
-    (with-open-file (f pathname :direction :output 
-		       :if-exists :supersede
-		       :if-does-not-exist :create)
+                   (file-to-string (or template-pathname
+                                       (asdf:system-relative-pathname
+                                        :erudite
+                                        "latex/template.tex")))))
+        (fragments
+         (loop for file in files
+            appending
+              (parse-lisp-source (file-to-string file)))))
+    (with-open-file (f pathname :direction :output
+                       :if-exists :supersede
+                       :if-does-not-exist :create)
       (write-string
        (funcall template (list :title title
-			       :author author
-			       :body (compile-latex-fragments fragments)))
+                               :author author
+                               :body (compile-latex-fragments fragments)))
        f))
     t))
 
@@ -156,21 +190,21 @@ To generate LaTeX, the \emph{gen-latex-doc} function is called:
 
 Sphinx is the other kind of output apart from LaTeX.
 
-Code fragments in Sphinx must appear indented after a \verb'.. code-block::' directive: 
+Code fragments in Sphinx must appear indented after a \verb'.. code-block::' directive:
 
 |#
 
 (defun compile-sphinx-fragments (fragments)
   "Prepares parsed fragments for Sphinx generation"
   (apply #'concatenate 'string
-	 (loop for fragment in fragments
-	    collect
-	      (ecase (first fragment)
-		(:code (format nil ".. code-block:: common-lisp~%~%     ~A"
-			       (indent-code 
-				(string-trim (list #\  #\newline) 
-					     (second fragment)))))
-		(:doc (second fragment))))))
+         (loop for fragment in fragments
+            collect
+              (ecase (first fragment)
+                (:code (format nil ".. code-block:: common-lisp~%~%     ~A"
+                               (indent-code
+                                (string-trim (list #\  #\newline)
+                                             (second fragment)))))
+                (:doc (second fragment))))))
 
 #|
 
@@ -181,15 +215,15 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 (defun indent-code (code)
   "Code in sphinx has to be indented"
   (let ((lines (split-sequence:split-sequence #\newline
-					      code)))
+                                              code)))
     (apply #'concatenate 'string
-	   (mapcar (lambda (line)
-		     (format nil "     ~A~%" line))
-		   lines))))
+           (mapcar (lambda (line)
+                     (format nil "     ~A~%" line))
+                   lines))))
 
 #|
 
-To generate Sphinx code, \emph{gen-sphinx-doc} is called. 
+To generate Sphinx code, \emph{gen-sphinx-doc} is called.
 
 |#
 
@@ -201,21 +235,21 @@ To generate Sphinx code, \emph{gen-sphinx-doc} is called.
          - prelude: String (or pathname) to append before the Sphinx document.
          - postlude: String (or pathname) to append after the Sphinx document."
   (let ((fragments
-	 (loop for file in files
-	    appending
-	      (parse-lisp-source (file-to-string file)))))
-    (with-open-file (f pathname :direction :output 
-		       :if-exists :supersede
-		       :if-does-not-exist :create)
+         (loop for file in files
+            appending
+              (parse-lisp-source (file-to-string file)))))
+    (with-open-file (f pathname :direction :output
+                       :if-exists :supersede
+                       :if-does-not-exist :create)
       (when prelude
-	(write-string 
-	 (if (pathnamep prelude)
-	     (file-to-string prelude)
-	     prelude)
-	 f))
+        (write-string
+         (if (pathnamep prelude)
+             (file-to-string prelude)
+             prelude)
+         f))
       (write-string (compile-sphinx-fragments fragments) f)
       (when postlude
-	(write-string (if (pathnamep postlude)
-			  (file-to-string postlude)
-			  postlude)
-		      f)))))
+        (write-string (if (pathnamep postlude)
+                          (file-to-string postlude)
+                          postlude)
+                      f)))))
