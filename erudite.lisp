@@ -47,14 +47,15 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
           s))))))
 
 (defmethod process-file-to-string ((files cons))
-  (with-output-to-string (s)
-    (process-fragments
-     (loop
-        :for file :in files
+  (post-process-output
+   (with-output-to-string (s)
+     (process-fragments
+      (loop
+	 :for file :in files
         :appending (let ((*current-path* (fad:pathname-directory-pathname file)))
                      (with-open-file (f file)
                        (split-file-source f))))
-     s)))
+      s))))
 
 (defmethod process-file-to-string :before (pathname)
   (setf *chunks* nil
@@ -84,18 +85,18 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
          :while line
          :do
          (cond
-           ((scan "__INSERT_CHUNK__(.*)" line)
+           ((scan "^__INSERT_CHUNK__(.*)$" line)
             (register-groups-bind (chunk-name)
-                ("__INSERT_CHUNK__(.*)" line)
+                ("^__INSERT_CHUNK__(.*)$" line)
               ;; Insert the chunk
               (let ((chunk (find-chunk chunk-name)))
                 (write-chunk chunk-name
                              (get-output-stream-string (cdr chunk))
                              output
                              *output-type*))))
-           ((scan "__INSERT_EXTRACT__(.*)" line)
+           ((scan "^__INSERT_EXTRACT__(.*)$" line)
             (register-groups-bind (extract-name)
-                ("__INSERT_EXTRACT__(.*)" line)
+                ("^__INSERT_EXTRACT__(.*)$" line)
               ;; Insert the extract
               (let ((extract (find-extract extract-name)))
                 (write-string (get-output-stream-string (cdr extract))
@@ -135,7 +136,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
              ;;; First, add the first comment line
              (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
                (write-string comment-line s))
-             ;; While there are lines without |#, add them to the comment source
+             ;; While there are lines without \verb'|#', add them to the comment source
              (loop
                 :for line := (read-line stream nil)
                 :while (and line (not (search "|#" line)))

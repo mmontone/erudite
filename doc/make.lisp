@@ -9,8 +9,10 @@
 (defparameter *files* (list (asdf:system-relative-pathname :erudite "erudite.lisp")))
 
 (defun make ()
-  (erudite:gen-latex-doc 
+  (erudite:erudite
    (asdf:system-relative-pathname :erudite "doc/erudite.tex")
    *files*
    :title "Erudite Developer Manual"
-   :author "Mariano Montone"))
+   :author "Mariano Montone"
+   :input-type :latex
+   :output-type :latex))
