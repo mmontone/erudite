@@ -59,6 +59,27 @@ a long comment")))
   (merge-pathnames filename
 		   (asdf:system-relative-pathname :erudite "test/")))
 
+(test basic-processing-test
+  (is
+   (equalp
+    (erudite::process-string ";; Hello
+(print \"world\")")
+    "Hello
+\\begin{code}
+(print \"world\")
+\\end{code}
+"))
+  (is 
+   (equalp
+    (erudite::process-string "#| Hello
+|#
+(print \"world\")")
+    "Hello
+\\begin{code}
+(print \"world\")
+\\end{code}
+")))
+
 (test chunk-test
   (is 
    (equalp
@@ -170,4 +191,26 @@ isn't \\emph{it}?
 ;; isn't @bold{it}?")
        "\\textbf{this} is \\textbf{bold}
 isn't \\textbf{it}?
+")))
+
+(test verbatim-syntax-test
+  (is (equalp
+       (erudite::process-string 
+	";; @verbatim
+;; This is verbatim
+;; @end verbatim")
+       "\\begin{verbatim}
+This is verbatim
+\\end{verbatim}
+")))
+
+(test code-syntax-test
+  (is (equalp
+       (erudite::process-string 
+	";; @code
+;; This is verbatim
+;; @end code")
+       "\\begin{code}
+This is verbatim
+\\end{code}
 ")))

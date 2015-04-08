@@ -64,6 +64,36 @@
 	      (format-syntax output (list :subsubsection title)))
 	    nil))
 
+;; @subsubsection Verbatim
+(define-erudite-syntax begin-verbatim
+  (:match (line)
+    (scan "@verbatim" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :begin-verbatim))
+	    nil))
+
+(define-erudite-syntax end-verbatim
+  (:match (line)
+    (scan "@end verbatim" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :end-verbatim))
+	    nil))
+
+;; @subsubsection Code
+(define-erudite-syntax begin-code
+  (:match (line)
+    (scan "@code" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :begin-code))
+	    nil))
+
+(define-erudite-syntax end-code
+  (:match (line)
+    (scan "@end code" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :end-code))
+	    nil))
+
 ;; @subsubsection Emphasis
 (define-erudite-syntax emphasis
   (:match (line)
@@ -94,7 +124,29 @@
 				 (format-syntax nil (list :italics text)))
 			       :simple-calls t)))
 
+;; @subsubsection Inline verbatim
+(define-erudite-syntax inline-verbatim
+  (:match (line)
+    (scan "@verb{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@verb{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :verbatim text)))
+			       :simple-calls t)))
+
+;; @subsubsection Reference
+(define-erudite-syntax reference
+  (:match (line)
+    (scan "@ref{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@ref{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :ref text)))
+			       :simple-calls t)))
+
 ;; @subsection Syntax formatting
+
+;; @subsubsection Latex output
 
 (defun format-syntax (destination syntax)
   (if (null destination)
@@ -121,6 +173,30 @@
   (format stream "\\subsubsection{~A}" (second syntax)))
 
 (defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :begin-verbatim))
+			   stream
+			   syntax)
+  (format stream "\\begin{verbatim}"))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :end-verbatim))
+			   stream
+			   syntax)
+  (format stream "\\end{verbatim}"))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :begin-code))
+			   stream
+			   syntax)
+  (format stream "\\begin{code}"))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :end-code))
+			   stream
+			   syntax)
+  (format stream "\\end{code}"))
+
+(defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :emph))
 			   stream
 			   syntax)
@@ -137,3 +213,10 @@
 			   stream
 			   syntax)
   (format stream "\\textit{~A}" (second syntax)))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :ref))
+			   stream
+			   syntax)
+  (format stream "\\verb#~A#" (second syntax)))
+
