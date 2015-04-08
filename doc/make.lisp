@@ -6,7 +6,14 @@
 
 (in-package :erudite.doc)
 
-(defparameter *files* (list (asdf:system-relative-pathname :erudite "erudite.lisp")))
+(defun system-file (filename)
+  (asdf:system-relative-pathname :erudite filename))
+
+(defparameter *files* 
+  (mapcar #'system-file 
+	  (list "erudite.lisp"
+		"commands.lisp"
+		"syntax/erudite.lisp")))
 
 (defun make ()
   (erudite:erudite
@@ -14,5 +21,5 @@
    *files*
    :title "Erudite Developer Manual"
    :author "Mariano Montone"
-   :input-type :latex
+   :input-type :erudite
    :output-type :latex))
