@@ -43,19 +43,19 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 
 (defmacro define-command (name &body body)
   (let ((match-function-def (or (find :match body :key #'car)
-				(error "Specify a match function")))
-	(process-function-def (or (find :process body :key #'car)
-				  (error "Specify a process function"))))
+                                (error "Specify a match function")))
+        (process-function-def (or (find :process body :key #'car)
+                                  (error "Specify a process function"))))
     `(progn
        ,(destructuring-bind (_ match-args &body match-body) match-function-def
-			    `(defun match-command ((command (eql ',name))
-						   ,@match-args)
-			       ,@match-body))
-       ,(destructuring-bind (_ process-args &body process-body) 
-			    process-function-def
-			    `(defmethod process-command ((command (eql ',name)) 
-							 ,@process-args)
-			       ,@process-body))
+                            `(defmethod match-command ((command (eql ',name))
+                                                       ,@match-args)
+                               ,@match-body))
+       ,(destructuring-bind (_ process-args &body process-body)
+                            process-function-def
+                            `(defmethod process-command ((command (eql ',name))
+                                                         ,@process-args)
+                               ,@process-body))
        (pushnew ',name *commands*))))
 
 ;;; The parser works like a custom look-ahead parser, with a whole file line
@@ -150,77 +150,85 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
        :finally (append-to-end current-part appended-parts))
     appended-parts))
 
-(defun process-parts (parts stream)
-  (let ((first-part (first parts)))
-    (process-part (first first-part) first-part
-		  (rest parts)
-		  stream)))
+(defun process-parts (parts output)
+  (when parts
+    (let ((first-part (first parts)))
+      (process-part (first first-part) first-part
+		    output
+		    (lambda ()
+		      (process-parts (rest parts) output))))))
 
-(defgeneric process-part (part-type part stream parts))
+(defgeneric process-part (part-type part output cont))
 
-(defmethod process-part ((type (eql :code)) part stream parts)
-  (write-code (second part) stream *output-type*)
-  (process-parts parts stream))
+(defmethod process-part ((type (eql :code)) part output cont)
+  (write-code (second part) output *output-type*)
+  (funcall cont))
 
-(defmethod process-part ((type (eql :doc)) part output parts)
-  (with-input-from-string (s (second part))
-    (process-doc-stream )))
+(defmethod process-part ((type (eql :doc)) part output cont)
+  (with-input-from-string (input (second part))
+    (labels ((%process-part (&key (input input) (output output))
+               (let ((line (read-line input nil)))
+                 (if line
+                     (maybe-process-command line input output #'%process-part)
+                     (funcall cont)))))
+      (%process-part))))
 
-(loop 
-       :for line := (read-line s nil)
-       :while line
-       :do
-       (maybe-process-command line s output part parts))
-
-(defun match-command (line)
-  (loop 
+(defun find-matching-command (line)
+  (loop
      :for command :in *commands*
      :when (match-command command line)
      :return command-name))
 
-(defun maybe-process-command (line input output part parts)
+(defun maybe-process-command (line input output cont)
   "Process a top-level command"
-  (let ((command (match-command line)))
+  (let ((command (find-matching-command line)))
     (if command
-	(process-command command line input output part parts)
-	(process-doc *input-type* *output-type* line output parts))))
+        (process-command command line input output cont)
+        (process-doc *input-type* *output-type* line output cont))))
 
 (define-command input-type
   (:match (line)
     (scan "@input-type\\s+(.+)" line))
-  (:process (line input output part parts)
-	    (register-groups-bind (input-type) ("@input-type\\s+(.+)" line)
-	      (setf *input-type* (intern (string-upcase input-type) :keyword)))
-	    (process-parts parts output)))
+  (:process (line input output cont)
+            (register-groups-bind (input-type) ("@input-type\\s+(.+)" line)
+              (setf *input-type* (intern (string-upcase input-type) :keyword)))
+            (funcall cont)))
 
 (defvar *current-chunk* nil)
 
 (define-command chunk
   (:match (line)
     (scan "@chunk\\s+(.+)" line))
-  (:process (line input output part parts)
-	    (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
-	      ;; Output the chunk name
-	      (write-chunk chunk-name output *output-type*)
-	      ;; Build and register the chunk for later processing
-	      ;; Redirect the output to the "chunk output"
-	      (with-output-to-string (chunk-ouput)
-		(let ((*current-chunk* (cons chunk-name chunk-output)))
-		  (
-	      
-	      
-  
+  (:process (line input output cont)
+            (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
+              ;; Output the chunk name
+              (write-chunk chunk-name output *output-type*)
+              ;; Build and register the chunk for later processing
+              ;; Redirect the output to the "chunk output"
+              (with-output-to-string (chunk-output)
+                (let ((*current-chunk* (cons chunk-name chunk-output)))
+                  (funcall cont :output chunk-output))))))
 
-(defmethod process-doc ((input-type (eql :latex)) output-type line stream parts)
+(define-command end-chunk
+  (:match (line)
+    (scan "@end chunk" line))
+  (:process (line input output cont)
+	    (push *current-chunk* *chunks*)))
+
+(defmethod process-doc ((input-type (eql :latex)) output-type line stream cont)
   (write-string line stream)
   (terpri stream)
-  (process-parts parts stream))
+  (funcall cont))
 
-(defmethod process-doc ((input-type (eql :sphinx)) output-type line stream parts)
+(defmethod process-doc ((input-type (eql :sphinx)) output-type line stream cont)
   (write-string line stream)
   (terpri stream)
-  (process-parts parts stream))
+  (funcall cont))
 
+(defmethod process-doc ((input-type (eql :erudite)) output-type line stream cont)
+  (write-string line stream)
+  (terpri stream)
+  (funcall cont))
 
 (defmethod write-code (code stream (output-type (eql :latex)))
   (write-string "\\begin{code}" stream)
@@ -228,6 +236,11 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (write-string code stream)
   (terpri stream)
   (write-string "\\end{code}" stream))
+
+(defmethod write-chunk (chunk-name stream (output-type (eql :latex)))
+  (write-string "<<<" stream)
+  (write-string chunk-name stream)
+  (write-string ">>>" stream))
 
 #|
 
@@ -248,7 +261,7 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
   (write-string ".. code-block:: common-lisp" stream)
   (terpri stream)
   (write-string (indent-code code) stream)
-  (terpri stream)) 
+  (terpri stream))
 
 #|
 
