@@ -14,12 +14,18 @@ Some of its salient features are:
 
 \end{itemize}
 
-\ignore {
+@ignore
 |#
 (in-package #:erudite)
 
 #|
-}
+@end ignore
+
+\chapter{Invocation}
+
+Erudite is invoked calling @ref{erudite} function.
+
+@insert erudite-function
 
 \chapter{Implementation}
 
@@ -31,13 +37,23 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 (defvar *output-type* :latex)
 (defvar *current-path* nil)
 
-(defun process-file-to-string (pathname)
+(defmethod process-file-to-string ((pathname pathname))
   (let ((*current-path* (fad:pathname-directory-pathname pathname)))
     (with-open-file (f pathname)
       (with-output-to-string (s)
-        (erudite::process-fragments
-         (erudite::split-file-source f)
+        (process-fragments
+         (split-file-source f)
          s)))))
+
+(defmethod process-file-to-string ((files cons))
+  (with-output-to-string (s)
+    (process-fragments
+     (loop
+        :for file :in files
+        :appending (let ((*current-path* (fad:pathname-directory-pathname file)))
+                     (with-open-file (f file)
+                       (split-file-source f))))
+     s)))
 
 (defun process-string (string)
   (with-input-from-string (f string)
@@ -142,9 +158,9 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (when fragments
     (let ((first-fragment (first fragments)))
       (process-fragment (first first-fragment) first-fragment
-                    output
-                    (lambda (&key (output output))
-                      (process-fragments (rest fragments) output))))))
+                        output
+                        (lambda (&key (output output))
+                          (process-fragments (rest fragments) output))))))
 
 (defgeneric process-fragment (fragment-type fragment output cont))
 
@@ -189,14 +205,14 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 
 (defmethod process-doc ((input-type (eql :erudite)) output-type line stream cont)
   (let ((formatted-line line))
-    (loop 
+    (loop
        :for syntax :in *erudite-syntax*
        :while formatted-line
        :when (match-syntax syntax formatted-line)
        :do
        (setf formatted-line (process-syntax syntax formatted-line stream output-type))
        :finally (when formatted-line
-		  (write-string formatted-line stream)))
+                  (write-string formatted-line stream)))
     (terpri stream)
     (funcall cont)))
 
@@ -246,31 +262,15 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 
 \chapter{Backends}
 
-\emph{Erudite} support LaTeX and Sphinx generation at the moment.
+\emph{Erudite} supports LaTeX and Sphinx generation at the moment.
 
 \section{LaTeX}
-
-The parsed fragments are compiled to latex code. That means embedding the code fragments found between \verb'\begin{code}' and \verb'\end{code}'.
 |#
 
-(defun compile-latex-fragments (fragments)
-  "Prepare parsed fragments to be compiled to LaTeX"
-  (apply #'concatenate 'string
-         (loop for fragment in fragments
-            collect
-              (ecase (first fragment)
-                (:code (format nil "\\begin{code}~%~A~%\\end{code}"
-                               (string-trim (list #\  #\newline)
-                                            (second fragment))))
-                (:doc (second fragment))))))
+(defgeneric gen-doc (output-type pathname files &rest args))
 
-#|
-
-To generate LaTeX, the \emph{gen-latex-doc} function is called:
-
-|#
-
-(defun gen-latex-doc (pathname files &key title author template-pathname)
+(defmethod gen-doc ((output-type (eql :latex)) pathname files
+                    &key title author template-pathname input-type &allow-other-keys)
   "Generates a LaTeX document.
 
    Args: - pathname: The pathname of the .tex file to generate.
@@ -282,18 +282,14 @@ To generate LaTeX, the \emph{gen-latex-doc} function is called:
                    (file-to-string (or template-pathname
                                        (asdf:system-relative-pathname
                                         :erudite
-                                        "latex/template.tex")))))
-        (fragments
-         (loop for file in files
-            appending
-              (parse-lisp-source (file-to-string file)))))
+                                        "latex/template.tex"))))))
     (with-open-file (f pathname :direction :output
                        :if-exists :supersede
                        :if-does-not-exist :create)
       (write-string
        (funcall template (list :title title
                                :author author
-                               :body (compile-latex-fragments fragments)))
+                               :body (process-file-to-string files)))
        f))
     t))
 
@@ -303,51 +299,38 @@ To generate LaTeX, the \emph{gen-latex-doc} function is called:
 
 Sphinx is the other kind of output apart from LaTeX.
 
-Code fragments in Sphinx must appear indented after a \verb'.. code-block::' directive:
-
 |#
 
-(defun compile-sphinx-fragments (fragments)
-  "Prepares parsed fragments for Sphinx generation"
-  (apply #'concatenate 'string
-         (loop for fragment in fragments
-            collect
-              (ecase (first fragment)
-                (:code (format nil ".. code-block:: common-lisp~%~%     ~A"
-                               (indent-code
-                                (string-trim (list #\  #\newline)
-                                             (second fragment)))))
-                (:doc (second fragment))))))
-
-#|
-
-To generate Sphinx code, \emph{gen-sphinx-doc} is called.
-
-|#
-
-(defun gen-sphinx-doc (pathname files &key prelude postlude)
+(defmethod gen-doc ((output-type (eql :sphinx)) pathname files &key prelude postlude input-type &allow-other-keys)
   "Generates Sphinx document.
 
    Args: - pathname: Pathname of the .rst file to generate.
          - files: .lisp files to compile.
          - prelude: String (or pathname) to append before the Sphinx document.
          - postlude: String (or pathname) to append after the Sphinx document."
-  (let ((fragments
-         (loop for file in files
-            appending
-              (parse-lisp-source (file-to-string file)))))
-    (with-open-file (f pathname :direction :output
-                       :if-exists :supersede
-                       :if-does-not-exist :create)
-      (when prelude
-        (write-string
-         (if (pathnamep prelude)
-             (file-to-string prelude)
-             prelude)
-         f))
-      (write-string (compile-sphinx-fragments fragments) f)
-      (when postlude
-        (write-string (if (pathnamep postlude)
-                          (file-to-string postlude)
-                          postlude)
-                      f)))))
+  (with-open-file (f pathname :direction :output
+                     :if-exists :supersede
+                     :if-does-not-exist :create)
+    (when prelude
+      (write-string
+       (if (pathnamep prelude)
+           (file-to-string prelude)
+           prelude)
+       f))
+    (write-string (process-file-to-string files) f)
+    (when postlude
+      (write-string (if (pathnamep postlude)
+                        (file-to-string postlude)
+                        postlude)
+                    f))))
+
+;; @extract erudite-function
+
+(defun erudite (pathname files  &rest args &key (output-type *output-type*)
+                                             (input-type *input-type*)
+                                             &allow-other-keys)
+  (let ((*output-type* output-type)
+        (*input-type* input-type))
+    (apply #'gen-doc output-type pathname files args)))
+
+;; @end extract
