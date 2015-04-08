@@ -84,3 +84,13 @@ This has been extracted
 \\begin{code}
 (+ 1 2)
 \\end{code}")))
+
+(test ignore-test
+  (is
+   (equalp
+    (erudite::process-file-to-string (test-file "ignore1.lisp"))
+    "Ignore test
+This is not ignored
+\\begin{code}
+(+ 1 3)
+\\end{code}")))

@@ -186,7 +186,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
      :when (match-command command line)
      :return command))
 
-(defun maybe-process-command (line input output cont)
+(defmethod maybe-process-command (line input output cont)
   "Process a top-level command"
   (let ((command (find-matching-command line)))
     (if command
@@ -293,6 +293,39 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
                 (write-string (get-output-stream-string (cdr extract))
                               output)
                 (funcall cont)))))
+
+;; \subsection{Ignore commmand}
+
+(defvar *ignore* nil)
+
+(define-command ignore
+  (:match (line)
+    (scan "@ignore" line))
+  (:process (line input output cont)
+	    (setf *ignore* t)
+	    (funcall cont)))
+
+(define-command end-ignore
+  (:match (line)
+    (scan "@end ignore" line))
+  (:process (line input output cont)
+	    (setf *ignore* nil)
+	    (funcall cont)))
+
+(defmethod process-doc :around (input-type output-type line stream cont)
+  (if *ignore*
+      (funcall cont)
+      (call-next-method)))
+
+(defmethod process-part :around ((type (eql :code)) part output cont)
+  (if *ignore*
+      (funcall cont)
+      (call-next-method)))
+
+(defmethod maybe-process-command :around (line input output cont)
+  (if (and *ignore* (not (match-command 'end-ignore line)))
+      (funcall cont)
+      (call-next-method)))
 
 (defmethod process-doc ((input-type (eql :latex)) output-type line stream cont)
   (write-string line stream)
