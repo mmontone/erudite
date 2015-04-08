@@ -35,6 +35,13 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 (defvar *chunks* nil)
 (defvar *extracts* nil)
 
+(defun process-file-to-string (pathname)
+  (with-open-file (f pathname)
+    (with-output-to-string (s)
+      (erudite::process-parts
+       (erudite::split-file-source f)
+       s))))
+
 (defun find-command (name &optional (error-p t))
   (let ((command (gethash name *commands*)))
     (when (and error-p (not command))
@@ -155,7 +162,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
     (let ((first-part (first parts)))
       (process-part (first first-part) first-part
 		    output
-		    (lambda ()
+		    (lambda (&key (output output))
 		      (process-parts (rest parts) output))))))
 
 (defgeneric process-part (part-type part output cont))
@@ -167,17 +174,19 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 (defmethod process-part ((type (eql :doc)) part output cont)
   (with-input-from-string (input (second part))
     (labels ((%process-part (&key (input input) (output output))
+	       (flet ((process-cont (&key (input input) (output output))
+			(%process-part :input input :output output)))
                (let ((line (read-line input nil)))
                  (if line
-                     (maybe-process-command line input output #'%process-part)
-                     (funcall cont)))))
+                     (maybe-process-command line input output #'process-cont)
+                     (funcall cont :output output))))))
       (%process-part))))
 
 (defun find-matching-command (line)
   (loop
      :for command :in *commands*
      :when (match-command command line)
-     :return command-name))
+     :return command))
 
 (defun maybe-process-command (line input output cont)
   "Process a top-level command"
@@ -207,7 +216,8 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
               ;; Redirect the output to the "chunk output"
               (with-output-to-string (chunk-output)
                 (let ((*current-chunk* (cons chunk-name chunk-output)))
-                  (funcall cont :output chunk-output))))))
+                  (funcall cont :output chunk-output)
+		  )))))
 
 (define-command end-chunk
   (:match (line)

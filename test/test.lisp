@@ -50,3 +50,17 @@ a long comment")))
   (is (null
        (with-input-from-string (s "a short comment")
 	 (erudite::parse-short-comment (read-line s) s)))))
+
+(defun test-file (filename)
+  (merge-pathnames filename
+		   (asdf:system-relative-pathname :erudite "test/")))
+
+(test chunk-test
+  (is 
+   (equalp
+    (erudite::process-file-to-string (test-file "chunk1.lisp"))
+    "<<<chunk1>>>"))
+  (is 
+   (equalp
+    (erudite::process-file-to-string (test-file "chunk2.lisp"))
+    "<<<chunk2>>")))
