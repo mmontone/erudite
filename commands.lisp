@@ -159,7 +159,7 @@
       (funcall cont)
       (call-next-method)))
 
-(defmethod process-part :around ((type (eql :code)) part output cont)
+(defmethod process-fragment :around ((type (eql :code)) fragment output cont)
   (if *ignore*
       (funcall cont)
       (call-next-method)))

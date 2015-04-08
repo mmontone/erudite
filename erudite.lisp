@@ -23,8 +23,6 @@ Some of its salient features are:
 
 \chapter{Implementation}
 
-Implementation is very ad-hoc at the moment.
-
 First, files with literate code are parsed into \emph{fragments}. Fragments can be of type \textit{documentation} or type \textit{code}. \textit{documentation} is the text that appears in Common Lisp comments. \textit{code} fragments are the rest.
 |#
 
@@ -37,14 +35,14 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (let ((*current-path* (fad:pathname-directory-pathname pathname)))
     (with-open-file (f pathname)
       (with-output-to-string (s)
-        (erudite::process-parts
+        (erudite::process-fragments
          (erudite::split-file-source f)
          s)))))
 
 (defun process-string (string)
   (with-input-from-string (f string)
     (with-output-to-string (s)
-      (erudite::process-parts
+      (erudite::process-fragments
        (erudite::split-file-source f)
        s))))
 
@@ -53,7 +51,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 
 (defun split-file-source (stream)
   "Splits a file source in docs and code"
-  (append-source-parts
+  (append-source-fragments
    (loop
       :for line := (read-line stream nil)
       :while line
@@ -119,51 +117,51 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
            (list thing))
      list)))
 
-(defun append-source-parts (parts)
-  "Append docs and code parts"
-  (let ((appended-parts nil)
-        (current-part (first parts)))
+(defun append-source-fragments (fragments)
+  "Append docs and code fragments"
+  (let ((appended-fragments nil)
+        (current-fragment (first fragments)))
     (loop
-       :for part :in (cdr parts)
+       :for fragment :in (cdr fragments)
        :do
-       (if (equalp (first part) (first current-part))
-           ;; The parts are of the same type. Append them
-           (setf (second current-part)
+       (if (equalp (first fragment) (first current-fragment))
+           ;; The fragments are of the same type. Append them
+           (setf (second current-fragment)
                  (with-output-to-string (s)
-                   (write-string (second current-part) s)
+                   (write-string (second current-fragment) s)
                    (terpri s)
-                   (write-string (second part) s)))
-           ;; else, there's a new kind of part
+                   (write-string (second fragment) s)))
+           ;; else, there's a new kind of fragment
            (progn
-             (setf appended-parts (append-to-end current-part appended-parts))
-             (setf current-part part))))
-    (setf appended-parts (append-to-end current-part appended-parts))
-    appended-parts))
+             (setf appended-fragments (append-to-end current-fragment appended-fragments))
+             (setf current-fragment fragment))))
+    (setf appended-fragments (append-to-end current-fragment appended-fragments))
+    appended-fragments))
 
-(defun process-parts (parts output)
-  (when parts
-    (let ((first-part (first parts)))
-      (process-part (first first-part) first-part
+(defun process-fragments (fragments output)
+  (when fragments
+    (let ((first-fragment (first fragments)))
+      (process-fragment (first first-fragment) first-fragment
                     output
                     (lambda (&key (output output))
-                      (process-parts (rest parts) output))))))
+                      (process-fragments (rest fragments) output))))))
 
-(defgeneric process-part (part-type part output cont))
+(defgeneric process-fragment (fragment-type fragment output cont))
 
-(defmethod process-part ((type (eql :code)) part output cont)
-  (write-code (second part) output *output-type*)
+(defmethod process-fragment ((type (eql :code)) fragment output cont)
+  (write-code (second fragment) output *output-type*)
   (funcall cont))
 
-(defmethod process-part ((type (eql :doc)) part output cont)
-  (with-input-from-string (input (second part))
-    (labels ((%process-part (&key (input input) (output output))
+(defmethod process-fragment ((type (eql :doc)) fragment output cont)
+  (with-input-from-string (input (second fragment))
+    (labels ((%process-fragment (&key (input input) (output output))
                (flet ((process-cont (&key (input input) (output output))
-                        (%process-part :input input :output output)))
+                        (%process-fragment :input input :output output)))
                  (let ((line (read-line input nil)))
                    (if line
                        (maybe-process-command line input output #'process-cont)
                        (funcall cont :output output))))))
-      (%process-part))))
+      (%process-fragment))))
 
 (defun find-matching-command (line)
   (loop
