@@ -214,3 +214,16 @@ This is verbatim
 This is verbatim
 \\end{code}
 ")))
+
+(test list-syntax-test
+  (is (equalp
+       (erudite::process-string 
+	";; @list
+;; @item Item 1
+;; @item Item 2
+;; @end list")
+       "\\begin{itemize}
+\\item Item 1
+\\item Item 2
+\\end{itemize}
+")))

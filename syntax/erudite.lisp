@@ -94,6 +94,30 @@
 	    (format-syntax output (list :end-code))
 	    nil))
 
+;; @subsubsection Lists
+(define-erudite-syntax begin-list
+  (:match (line)
+    (scan "@list" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :begin-list))
+	    nil))
+
+(define-erudite-syntax end-list
+  (:match (line)
+    (scan "@end list" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :end-list))
+	    nil))
+
+(define-erudite-syntax list-item
+  (:match (line)
+    (scan "@item" line))
+  (:process (line output output-type)
+	    (regex-replace "@item" line
+			   (lambda (match)
+			     (format-syntax nil (list :list-item)))
+			   :simple-calls t)))
+
 ;; @subsubsection Emphasis
 (define-erudite-syntax emphasis
   (:match (line)
@@ -195,6 +219,24 @@
 			   stream
 			   syntax)
   (format stream "\\end{code}"))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :begin-list))
+			   stream
+			   syntax)
+  (format stream "\\begin{itemize}"))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :end-list))
+			   stream
+			   syntax)
+  (format stream "\\end{itemize}"))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :list-item))
+			   stream
+			   syntax)
+  (format stream "\\item" (second syntax)))
 
 (defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :emph))
