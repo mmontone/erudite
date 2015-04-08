@@ -62,12 +62,12 @@
               (write-chunk-name chunk-name output *output-type*)
 	      ;; Build and register the chunk for later processing
               ;; Redirect the output to the "chunk output"
-              (with-output-to-string (chunk-output)
-                (let ((*current-chunk* (list :name chunk-name
-                                             :output chunk-output
-                                             :original-output output)))
+	      (let* ((chunk-output (make-string-output-stream))
+		     (*current-chunk* (list :name chunk-name
+					    :output chunk-output
+					    :original-output output)))
                   (funcall cont :output chunk-output)
-                  )))))
+                  ))))
 
 (define-command end-chunk
   (:match (line)
@@ -84,13 +84,8 @@
     (scan "@echo\\s+(.+)" line))
   (:process (line input output cont)
             (register-groups-bind (chunk-name) ("@echo\\s+(.+)" line)
-              ;; Insert the chunk
-              (let ((chunk (find-chunk chunk-name)))
-                (write-chunk chunk-name
-                             (get-output-stream-string (cdr chunk))
-                             output
-                             *output-type*)
-                (funcall cont)))))
+	      (format output "__INSERT_CHUNK__~A~%" chunk-name)
+	      (funcall cont))))
 
 ;; @subsubsection Extraction
 
@@ -109,11 +104,11 @@
             (register-groups-bind (extract-name) ("@extract\\s+(.+)" line)
               ;; Build and register the extracted piece for later processing
               ;; Redirect the output to the "extract output"
-              (with-output-to-string (extract-output)
-                (let ((*current-extract* (list :name extract-name
+              (let* ((extract-output (make-string-output-stream))
+		     (*current-extract* (list :name extract-name
                                                :output extract-output
                                                :original-output output)))
-                  (funcall cont :output extract-output))))))
+                  (funcall cont :output extract-output)))))
 
 (define-command end-extract
   (:match (line)
@@ -130,11 +125,8 @@
     (scan "@insert\\s+(.+)" line))
   (:process (line input output cont)
             (register-groups-bind (extract-name) ("@insert\\s+(.+)" line)
-              ;; Insert the extract
-              (let ((extract (find-extract extract-name)))
-                (write-string (get-output-stream-string (cdr extract))
-                              output)
-                (funcall cont)))))
+              (format output "__INSERT_EXTRACT__~A~%" extract-name)
+	      (funcall cont))))
 
 ;; @subsubsection Ignore
 

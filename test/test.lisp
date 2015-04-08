@@ -99,7 +99,17 @@ This is a good chunk
 
 \\end{code}
 "
-)))
+))
+(signals error
+  (erudite::process-file-to-string (test-file "chunk3.lisp")))
+(is 
+ (equalp
+  (erudite::process-file-to-string (test-file "chunk4.lisp"))
+  "<<chunk4>>=
+Start
+The end
+<<<chunk4>>>
+")))  
 
 (test extract-test
   (is 
@@ -110,6 +120,15 @@ This has been extracted
 \\begin{code}
 (+ 1 2)
 \\end{code}
+"))
+(signals error
+  (erudite::process-file-to-string (test-file "extract2.lisp")))
+(is
+ (equalp
+  (erudite::process-file-to-string (test-file "extract3.lisp"))
+  "Start
+Extract 3
+End
 ")))
 
 (test ignore-test

@@ -38,29 +38,65 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 (defvar *current-path* nil)
 
 (defmethod process-file-to-string ((pathname pathname))
-  (let ((*current-path* (fad:pathname-directory-pathname pathname)))
+  (let ((*current-path* (fad:pathname-directory-pathname pathname))
+	(*chunks* nil)
+	(*extracts* nil))
     (with-open-file (f pathname)
-      (with-output-to-string (s)
-        (process-fragments
-         (split-file-source f)
-         s)))))
+      (post-process-output
+       (with-output-to-string (s)
+	 (process-fragments
+	  (split-file-source f)
+	  s))))))
 
 (defmethod process-file-to-string ((files cons))
-  (with-output-to-string (s)
-    (process-fragments
-     (loop
-        :for file :in files
+  (let ((*chunks* nil)
+	(*extracts* nil))
+    (with-output-to-string (s)
+      (process-fragments
+       (loop
+	  :for file :in files
         :appending (let ((*current-path* (fad:pathname-directory-pathname file)))
                      (with-open-file (f file)
                        (split-file-source f))))
-     s)))
+       s))))
 
 (defun process-string (string)
-  (with-input-from-string (f string)
-    (with-output-to-string (s)
-      (erudite::process-fragments
-       (erudite::split-file-source f)
-       s))))
+  (post-process-output
+   (with-input-from-string (f string)
+     (with-output-to-string (s)
+       (erudite::process-fragments
+	(erudite::split-file-source f)
+	s)))))
+
+(defun post-process-output (str)
+  "Resolve chunk inserts and extract inserts after processing"
+
+  (with-output-to-string (output)
+    (with-input-from-string (s str)
+      (loop 
+	 :for line := (read-line s nil)
+	 :while line
+	 :do
+	 (cond
+	   ((scan "__INSERT_CHUNK__(.*)" line)
+	    (register-groups-bind (chunk-name)
+		("__INSERT_CHUNK__(.*)" line)
+	      ;; Insert the chunk
+              (let ((chunk (find-chunk chunk-name)))
+                (write-chunk chunk-name
+			     (get-output-stream-string (cdr chunk))
+                             output
+                             *output-type*))))
+	   ((scan "__INSERT_EXTRACT__(.*)" line)
+	    (register-groups-bind (extract-name)
+		("__INSERT_EXTRACT__(.*)" line)
+	      ;; Insert the extract
+              (let ((extract (find-extract extract-name)))
+                (write-string (get-output-stream-string (cdr extract))
+                              output))))
+	   (t
+	    (write-string line output)
+	    (terpri output)))))))
 
 ;;; The parser works like a custom look-ahead parser, with a whole file line
 ;;; being the slice looked ahead. And is implemented in Continuation Passing Style.
