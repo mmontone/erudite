@@ -1,7 +1,11 @@
 (defpackage erudite.test
-  (:use :cl :fiveam :erudite))
+  (:use :cl :fiveam :erudite)
+  (:export :run-tests))
 
 (in-package :erudite.test)
+
+(defun run-tests ()
+  (run! 'erudite-tests))
 
 (def-suite erudite-tests)
 

@@ -9,4 +9,5 @@
 	       :cl-ppcre
 	       :alexandria
 	       :split-sequence
-	       :cl-template))
+	       :cl-template)
+  :in-order-to ((asdf:test-op (asdf:test-op :erudite-test))))
