@@ -32,13 +32,15 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 (defvar *short-comments-prefix* ";;")
 (defvar *input-type* :erudite)
 (defvar *output-type* :latex)
+(defvar *current-path* nil)
 
 (defun process-file-to-string (pathname)
-  (with-open-file (f pathname)
-    (with-output-to-string (s)
-      (erudite::process-parts
-       (erudite::split-file-source f)
-       s))))
+  (let ((*current-path* (fad:pathname-directory-pathname pathname)))
+    (with-open-file (f pathname)
+      (with-output-to-string (s)
+        (erudite::process-parts
+         (erudite::split-file-source f)
+         s)))))
 
 (defun find-command (name &optional (error-p t))
   (let ((command (gethash name *commands*)))
@@ -217,8 +219,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
             (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
               ;; Output the chunk name
               (write-chunk-name chunk-name output *output-type*)
-              (terpri output)
-              ;; Build and register the chunk for later processing
+	      ;; Build and register the chunk for later processing
               ;; Redirect the output to the "chunk output"
               (with-output-to-string (chunk-output)
                 (let ((*current-chunk* (list :name chunk-name
@@ -264,7 +265,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (:match (line)
     (scan "@extract\\s+(.+)" line))
   (:process (line input output cont)
-	    (register-groups-bind (extract-name) ("@extract\\s+(.+)" line)
+            (register-groups-bind (extract-name) ("@extract\\s+(.+)" line)
               ;; Build and register the extracted piece for later processing
               ;; Redirect the output to the "extract output"
               (with-output-to-string (extract-output)
@@ -287,7 +288,7 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (:match (line)
     (scan "@insert\\s+(.+)" line))
   (:process (line input output cont)
-	    (register-groups-bind (extract-name) ("@insert\\s+(.+)" line)
+            (register-groups-bind (extract-name) ("@insert\\s+(.+)" line)
               ;; Insert the extract
               (let ((extract (find-extract extract-name)))
                 (write-string (get-output-stream-string (cdr extract))
@@ -302,15 +303,15 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (:match (line)
     (scan "@ignore" line))
   (:process (line input output cont)
-	    (setf *ignore* t)
-	    (funcall cont)))
+            (setf *ignore* t)
+            (funcall cont)))
 
 (define-command end-ignore
   (:match (line)
     (scan "@end ignore" line))
   (:process (line input output cont)
-	    (setf *ignore* nil)
-	    (funcall cont)))
+            (setf *ignore* nil)
+            (funcall cont)))
 
 (defmethod process-doc :around (input-type output-type line stream cont)
   (if *ignore*
@@ -326,6 +327,37 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (if (and *ignore* (not (match-command 'end-ignore line)))
       (funcall cont)
       (call-next-method)))
+
+;; \subsection{Include command}
+
+(defvar *include-path* nil)
+
+(define-command include-path
+  (:match (line)
+    (scan "@include-path\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (path) ("@include-path\\s+(.+)" line)
+              (setf *include-path* (pathname path))
+              (funcall cont))))
+
+(define-command include
+  (:match (line)
+    (scan "@include\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
+              (let ((pathname (cond
+                                ((fad:pathname-absolute-p
+                                  (pathname filename-or-path))
+                                 filename-or-path)
+                                (*include-path*
+                                 (merge-pathnames filename-or-path
+                                                  *include-path*))
+                                (t (merge-pathnames filename-or-path
+                                                    *current-path*)))))
+                ;; Process and output the included file
+                (write-string (process-file-to-string pathname) output)
+		(terpri output)
+		(funcall cont)))))
 
 (defmethod process-doc ((input-type (eql :latex)) output-type line stream cont)
   (write-string line stream)
@@ -347,12 +379,14 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (terpri stream)
   (write-string code stream)
   (terpri stream)
-  (write-string "\\end{code}" stream))
+  (write-string "\\end{code}" stream)
+  (terpri stream))
 
 (defmethod write-chunk-name (chunk-name stream (output-type (eql :latex)))
   (write-string "<<<" stream)
   (write-string chunk-name stream)
-  (write-string ">>>" stream))
+  (write-string ">>>" stream)
+  (terpri stream))
 
 (defmethod write-chunk (chunk-name chunk stream (output-type (eql :latex)))
   (write-string "<<" stream)

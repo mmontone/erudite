@@ -72,7 +72,8 @@ This is a good chunk
 
 (+ 1 1)
 
-\\end{code}"
+\\end{code}
+"
 )))
 
 (test extract-test
@@ -83,7 +84,8 @@ This is a good chunk
 This has been extracted
 \\begin{code}
 (+ 1 2)
-\\end{code}")))
+\\end{code}
+")))
 
 (test ignore-test
   (is
@@ -93,4 +95,25 @@ This has been extracted
 This is not ignored
 \\begin{code}
 (+ 1 3)
-\\end{code}")))
+\\end{code}
+")))
+
+(test include-test
+  (is 
+   (equalp
+    (erudite::process-file-to-string (test-file "include1.lisp"))
+    "Include test
+This is includeA
+\\begin{code}
+(print \"include A\")
+\\end{code}
+
+\\begin{code}
+(print \"Include\")
+\\end{code}
+This is includeB
+\\begin{code}
+(print \"include B\")
+\\end{code}
+
+")))
