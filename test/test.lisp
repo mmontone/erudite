@@ -136,6 +136,18 @@ This is includeB
        "\\section{Section test}
 ")))
 
+(test subsection-syntax-test
+  (is (equalp
+       (erudite::process-string ";; @subsection Subsection test")
+       "\\subsection{Subsection test}
+")))
+
+(test subsubsection-syntax-test
+  (is (equalp
+       (erudite::process-string ";; @subsubsection Subsubsection test")
+       "\\subsubsection{Subsubsection test}
+")))
+
 (test emphasis-syntax-test
   (is (equalp
        (erudite::process-string ";; This is @emph{emphasized}")
@@ -146,4 +158,16 @@ This is includeB
 ;; isn't @emph{it}?")
        "\\emph{this} is \\emph{emphasized}
 isn't \\emph{it}?
+")))
+
+(test bold-syntax-test
+  (is (equalp
+       (erudite::process-string ";; This is @bold{bold}")
+       "This is \\textbf{bold}
+"))
+  (is (equalp
+       (erudite::process-string ";; @bold{this} is @bold{bold}
+;; isn't @bold{it}?")
+       "\\textbf{this} is \\textbf{bold}
+isn't \\textbf{it}?
 ")))

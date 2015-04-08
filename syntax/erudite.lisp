@@ -44,6 +44,26 @@
 	      (format-syntax output (list :section title)))
 	    nil))
 
+;; @subsubsection Subsection
+(define-erudite-syntax subsection
+  (:match (line)
+    (scan "@subsection" line))
+  (:process (line output output-type)
+	    (register-groups-bind (title) 
+		("@subsection\\s+(.+)" line)
+	      (format-syntax output (list :subsection title)))
+	    nil))
+
+;; @subsubsection Subsubsection
+(define-erudite-syntax subsubsection
+  (:match (line)
+    (scan "@subsubsection" line))
+  (:process (line output output-type)
+	    (register-groups-bind (title) 
+		("@subsubsection\\s+(.+)" line)
+	      (format-syntax output (list :subsubsection title)))
+	    nil))
+
 ;; @subsubsection Emphasis
 (define-erudite-syntax emphasis
   (:match (line)
@@ -54,13 +74,33 @@
 				 (format-syntax nil (list :emph text)))
 			       :simple-calls t)))
 
+;; @subsubsection Bold
+(define-erudite-syntax bold
+  (:match (line)
+    (scan "@bold{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@bold{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :bold text)))
+			       :simple-calls t)))
+
+;; @subsubsection Italics
+(define-erudite-syntax italics
+  (:match (line)
+    (scan "@it{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@it{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :italics text)))
+			       :simple-calls t)))
+
+;; @subsection Syntax formatting
+
 (defun format-syntax (destination syntax)
   (if (null destination)
       (with-output-to-string (stream)
 	(%format-syntax *output-type* (first syntax) stream  syntax))
       (%format-syntax *output-type* (first syntax) destination syntax)))
-
-;; @subsection Syntax formatting
 
 (defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :section))
@@ -69,7 +109,31 @@
   (format stream "\\section{~A}" (second syntax)))
 
 (defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :subsection))
+			   stream
+			   syntax)
+  (format stream "\\subsection{~A}" (second syntax)))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :subsubsection))
+			   stream
+			   syntax)
+  (format stream "\\subsubsection{~A}" (second syntax)))
+
+(defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :emph))
 			   stream
 			   syntax)
   (format stream "\\emph{~A}" (second syntax)))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :bold))
+			   stream
+			   syntax)
+  (format stream "\\textbf{~A}" (second syntax)))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :italics))
+			   stream
+			   syntax)
+  (format stream "\\textit{~A}" (second syntax)))
