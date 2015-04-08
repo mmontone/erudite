@@ -121,3 +121,29 @@ This is includeB
 \\end{code}
 
 ")))
+
+;; Erudite syntax tests
+
+(test basic-syntax-test
+  (is (equalp
+       (erudite::process-string ";; hello world")
+       "hello world
+")))
+
+(test section-syntax-test
+  (is (equalp
+       (erudite::process-string ";; @section Section test")
+       "\\section{Section test}
+")))
+
+(test emphasis-syntax-test
+  (is (equalp
+       (erudite::process-string ";; This is @emph{emphasized}")
+       "This is \\emph{emphasized}
+"))
+  (is (equalp
+       (erudite::process-string ";; @emph{this} is @emph{emphasized}
+;; isn't @emph{it}?")
+       "\\emph{this} is \\emph{emphasized}
+isn't \\emph{it}?
+")))

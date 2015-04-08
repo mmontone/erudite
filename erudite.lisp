@@ -41,6 +41,13 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
          (erudite::split-file-source f)
          s)))))
 
+(defun process-string (string)
+  (with-input-from-string (f string)
+    (with-output-to-string (s)
+      (erudite::process-parts
+       (erudite::split-file-source f)
+       s))))
+
 ;;; The parser works like a custom look-ahead parser, with a whole file line
 ;;; being the slice looked ahead. And is implemented in Continuation Passing Style.
 
@@ -129,8 +136,8 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
            ;; else, there's a new kind of part
            (progn
              (setf appended-parts (append-to-end current-part appended-parts))
-             (setf current-part part)))
-       :finally (append-to-end current-part appended-parts))
+             (setf current-part part))))
+    (setf appended-parts (append-to-end current-part appended-parts))
     appended-parts))
 
 (defun process-parts (parts output)
@@ -183,9 +190,17 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (funcall cont))
 
 (defmethod process-doc ((input-type (eql :erudite)) output-type line stream cont)
-  (write-string line stream)
-  (terpri stream)
-  (funcall cont))
+  (let ((formatted-line line))
+    (loop 
+       :for syntax :in *erudite-syntax*
+       :while formatted-line
+       :when (match-syntax syntax formatted-line)
+       :do
+       (setf formatted-line (process-syntax syntax formatted-line stream output-type))
+       :finally (when formatted-line
+		  (write-string formatted-line stream)))
+    (terpri stream)
+    (funcall cont)))
 
 (defmethod write-code (code stream (output-type (eql :latex)))
   (write-string "\\begin{code}" stream)

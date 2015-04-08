@@ -6,7 +6,10 @@
   :components ((:file "package")
 	       (:file "util")
 	       (:file "erudite")
-	       (:file "commands"))
+	       (:file "commands")
+	       (:module :syntax
+			:components
+			((:file "erudite"))))
   :depends-on (:cl-fad
 	       :cl-ppcre
 	       :alexandria
