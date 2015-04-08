@@ -205,17 +205,24 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 
 (defvar *current-chunk* nil)
 
+(defun find-chunk (chunk-name &key (error-p t))
+  (or (assoc chunk-name *chunks* :test #'equalp)
+      (error "Chunk not defined: ~A" chunk-name)))
+
 (define-command chunk
   (:match (line)
     (scan "@chunk\\s+(.+)" line))
   (:process (line input output cont)
             (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
               ;; Output the chunk name
-              (write-chunk chunk-name output *output-type*)
+              (write-chunk-name chunk-name output *output-type*)
+	      (terpri output)
               ;; Build and register the chunk for later processing
               ;; Redirect the output to the "chunk output"
               (with-output-to-string (chunk-output)
-                (let ((*current-chunk* (cons chunk-name chunk-output)))
+                (let ((*current-chunk* (list :name chunk-name 
+					     :output chunk-output
+					     :original-output output)))
                   (funcall cont :output chunk-output)
 		  )))))
 
@@ -223,7 +230,24 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (:match (line)
     (scan "@end chunk" line))
   (:process (line input output cont)
-	    (push *current-chunk* *chunks*)))
+	    (push (cons (getf *current-chunk* :name)
+			(getf *current-chunk* :output))
+		  *chunks*)
+	    ;; Restore the output
+	    (funcall cont :output (getf *current-chunk* :original-output))))
+
+(define-command echo
+  (:match (line)
+    (scan "@echo\\s+(.+)" line))
+  (:process (line input output cont)
+	    (register-groups-bind (chunk-name) ("@echo\\s+(.+)" line)
+	      ;; Insert the chunk
+	      (let ((chunk (find-chunk chunk-name)))
+		(write-chunk chunk-name
+			     (get-output-stream-string (cdr chunk))
+			     output
+			     *output-type*)
+		(funcall cont)))))
 
 (defmethod process-doc ((input-type (eql :latex)) output-type line stream cont)
   (write-string line stream)
@@ -247,10 +271,17 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (terpri stream)
   (write-string "\\end{code}" stream))
 
-(defmethod write-chunk (chunk-name stream (output-type (eql :latex)))
+(defmethod write-chunk-name (chunk-name stream (output-type (eql :latex)))
   (write-string "<<<" stream)
   (write-string chunk-name stream)
   (write-string ">>>" stream))
+
+(defmethod write-chunk (chunk-name chunk stream (output-type (eql :latex)))
+  (write-string "<<" stream)
+  (write-string chunk-name stream)
+  (write-string ">>=" stream)
+  (terpri stream)
+  (write-string chunk stream))
 
 #|
 

@@ -59,8 +59,18 @@ a long comment")))
   (is 
    (equalp
     (erudite::process-file-to-string (test-file "chunk1.lisp"))
-    "<<<chunk1>>>"))
+    "<<<chunk1>>>
+"))
   (is 
    (equalp
     (erudite::process-file-to-string (test-file "chunk2.lisp"))
-    "<<<chunk2>>")))
+    "<<<chunk2>>>
+This is the chunk:
+<<chunk2>>=
+This is a good chunk
+\\begin{code}
+
+(+ 1 1)
+
+\\end{code}"
+)))
