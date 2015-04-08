@@ -28,14 +28,35 @@ Implementation is very ad-hoc at the moment.
 First, files with literate code are parsed into \emph{fragments}. Fragments can be of type \textit{documentation} or type \textit{code}. \textit{documentation} is the text that appears in Common Lisp comments. \textit{code} fragments are the rest.
 |#
 
-(defvar *commands* (make-hash-table :test #'equalp))
+(defvar *commands* nil)
 (defvar *short-comments-prefix* ";;")
+(defvar *input-type* :erudite)
+(defvar *output-type* :latex)
+(defvar *chunks* nil)
+(defvar *extracts* nil)
 
 (defun find-command (name &optional (error-p t))
   (let ((command (gethash name *commands*)))
     (when (and error-p (not command))
       (error "Invalid command: ~A" command))
     command))
+
+(defmacro define-command (name &body body)
+  (let ((match-function-def (or (find :match body :key #'car)
+				(error "Specify a match function")))
+	(process-function-def (or (find :process body :key #'car)
+				  (error "Specify a process function"))))
+    `(progn
+       ,(destructuring-bind (_ match-args &body match-body) match-function-def
+			    `(defun match-command ((command (eql ',name))
+						   ,@match-args)
+			       ,@match-body))
+       ,(destructuring-bind (_ process-args &body process-body) 
+			    process-function-def
+			    `(defmethod process-command ((command (eql ',name)) 
+							 ,@process-args)
+			       ,@process-body))
+       (pushnew ',name *commands*))))
 
 ;;; The parser works like a custom look-ahead parser, with a whole file line
 ;;; being the slice looked ahead.
@@ -129,6 +150,106 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
        :finally (append-to-end current-part appended-parts))
     appended-parts))
 
+(defun process-parts (parts stream)
+  (let ((first-part (first parts)))
+    (process-part (first first-part) first-part
+		  (rest parts)
+		  stream)))
+
+(defgeneric process-part (part-type part stream parts))
+
+(defmethod process-part ((type (eql :code)) part stream parts)
+  (write-code (second part) stream *output-type*)
+  (process-parts parts stream))
+
+(defmethod process-part ((type (eql :doc)) part output parts)
+  (with-input-from-string (s (second part))
+    (process-doc-stream )))
+
+(loop 
+       :for line := (read-line s nil)
+       :while line
+       :do
+       (maybe-process-command line s output part parts))
+
+(defun match-command (line)
+  (loop 
+     :for command :in *commands*
+     :when (match-command command line)
+     :return command-name))
+
+(defun maybe-process-command (line input output part parts)
+  "Process a top-level command"
+  (let ((command (match-command line)))
+    (if command
+	(process-command command line input output part parts)
+	(process-doc *input-type* *output-type* line output parts))))
+
+(define-command input-type
+  (:match (line)
+    (scan "@input-type\\s+(.+)" line))
+  (:process (line input output part parts)
+	    (register-groups-bind (input-type) ("@input-type\\s+(.+)" line)
+	      (setf *input-type* (intern (string-upcase input-type) :keyword)))
+	    (process-parts parts output)))
+
+(defvar *current-chunk* nil)
+
+(define-command chunk
+  (:match (line)
+    (scan "@chunk\\s+(.+)" line))
+  (:process (line input output part parts)
+	    (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
+	      ;; Output the chunk name
+	      (write-chunk chunk-name output *output-type*)
+	      ;; Build and register the chunk for later processing
+	      ;; Redirect the output to the "chunk output"
+	      (with-output-to-string (chunk-ouput)
+		(let ((*current-chunk* (cons chunk-name chunk-output)))
+		  (
+	      
+	      
+  
+
+(defmethod process-doc ((input-type (eql :latex)) output-type line stream parts)
+  (write-string line stream)
+  (terpri stream)
+  (process-parts parts stream))
+
+(defmethod process-doc ((input-type (eql :sphinx)) output-type line stream parts)
+  (write-string line stream)
+  (terpri stream)
+  (process-parts parts stream))
+
+
+(defmethod write-code (code stream (output-type (eql :latex)))
+  (write-string "\\begin{code}" stream)
+  (terpri stream)
+  (write-string code stream)
+  (terpri stream)
+  (write-string "\\end{code}" stream))
+
+#|
+
+Code blocks in Sphinx are indented. The indent-code function takes care of that:
+
+|#
+
+(defun indent-code (code)
+  "Code in sphinx has to be indented"
+  (let ((lines (split-sequence:split-sequence #\newline
+                                              code)))
+    (apply #'concatenate 'string
+           (mapcar (lambda (line)
+                     (format nil "     ~A~%" line))
+                   lines))))
+
+(defmethod write-code (code stream (output-type (eql :sphinx)))
+  (write-string ".. code-block:: common-lisp" stream)
+  (terpri stream)
+  (write-string (indent-code code) stream)
+  (terpri stream)) 
+
 #|
 
 \chapter{Backends}
@@ -205,21 +326,6 @@ Code fragments in Sphinx must appear indented after a \verb'.. code-block::' dir
                                 (string-trim (list #\  #\newline)
                                              (second fragment)))))
                 (:doc (second fragment))))))
-
-#|
-
-Code blocks in Sphinx are indented. The indent-code function takes care of that:
-
-|#
-
-(defun indent-code (code)
-  "Code in sphinx has to be indented"
-  (let ((lines (split-sequence:split-sequence #\newline
-                                              code)))
-    (apply #'concatenate 'string
-           (mapcar (lambda (line)
-                     (format nil "     ~A~%" line))
-                   lines))))
 
 #|
 
