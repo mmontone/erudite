@@ -32,8 +32,6 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 (defvar *short-comments-prefix* ";;")
 (defvar *input-type* :erudite)
 (defvar *output-type* :latex)
-(defvar *chunks* nil)
-(defvar *extracts* nil)
 
 (defun process-file-to-string (pathname)
   (with-open-file (f pathname)
@@ -161,9 +159,9 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
   (when parts
     (let ((first-part (first parts)))
       (process-part (first first-part) first-part
-		    output
-		    (lambda (&key (output output))
-		      (process-parts (rest parts) output))))))
+                    output
+                    (lambda (&key (output output))
+                      (process-parts (rest parts) output))))))
 
 (defgeneric process-part (part-type part output cont))
 
@@ -174,12 +172,12 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
 (defmethod process-part ((type (eql :doc)) part output cont)
   (with-input-from-string (input (second part))
     (labels ((%process-part (&key (input input) (output output))
-	       (flet ((process-cont (&key (input input) (output output))
-			(%process-part :input input :output output)))
-               (let ((line (read-line input nil)))
-                 (if line
-                     (maybe-process-command line input output #'process-cont)
-                     (funcall cont :output output))))))
+               (flet ((process-cont (&key (input input) (output output))
+                        (%process-part :input input :output output)))
+                 (let ((line (read-line input nil)))
+                   (if line
+                       (maybe-process-command line input output #'process-cont)
+                       (funcall cont :output output))))))
       (%process-part))))
 
 (defun find-matching-command (line)
@@ -203,6 +201,9 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
               (setf *input-type* (intern (string-upcase input-type) :keyword)))
             (funcall cont)))
 
+;; \subsection{Chunks}
+
+(defvar *chunks* nil)
 (defvar *current-chunk* nil)
 
 (defun find-chunk (chunk-name &key (error-p t))
@@ -216,38 +217,82 @@ First, files with literate code are parsed into \emph{fragments}. Fragments can 
             (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
               ;; Output the chunk name
               (write-chunk-name chunk-name output *output-type*)
-	      (terpri output)
+              (terpri output)
               ;; Build and register the chunk for later processing
               ;; Redirect the output to the "chunk output"
               (with-output-to-string (chunk-output)
-                (let ((*current-chunk* (list :name chunk-name 
-					     :output chunk-output
-					     :original-output output)))
+                (let ((*current-chunk* (list :name chunk-name
+                                             :output chunk-output
+                                             :original-output output)))
                   (funcall cont :output chunk-output)
-		  )))))
+                  )))))
 
 (define-command end-chunk
   (:match (line)
     (scan "@end chunk" line))
   (:process (line input output cont)
-	    (push (cons (getf *current-chunk* :name)
-			(getf *current-chunk* :output))
-		  *chunks*)
-	    ;; Restore the output
-	    (funcall cont :output (getf *current-chunk* :original-output))))
+            (push (cons (getf *current-chunk* :name)
+                        (getf *current-chunk* :output))
+                  *chunks*)
+            ;; Restore the output
+            (funcall cont :output (getf *current-chunk* :original-output))))
 
 (define-command echo
   (:match (line)
     (scan "@echo\\s+(.+)" line))
   (:process (line input output cont)
-	    (register-groups-bind (chunk-name) ("@echo\\s+(.+)" line)
-	      ;; Insert the chunk
-	      (let ((chunk (find-chunk chunk-name)))
-		(write-chunk chunk-name
-			     (get-output-stream-string (cdr chunk))
-			     output
-			     *output-type*)
-		(funcall cont)))))
+            (register-groups-bind (chunk-name) ("@echo\\s+(.+)" line)
+              ;; Insert the chunk
+              (let ((chunk (find-chunk chunk-name)))
+                (write-chunk chunk-name
+                             (get-output-stream-string (cdr chunk))
+                             output
+                             *output-type*)
+                (funcall cont)))))
+
+;; \subsection{Extraction}
+
+(defvar *extracts* nil)
+(defvar *current-extract* nil)
+
+(defun find-extract (extract-name &key (error-p t))
+  (or (assoc extract-name *extracts* :test #'equalp)
+      (and error-p
+           (error "No text extracted with name: ~A" extract-name))))
+
+(define-command extract
+  (:match (line)
+    (scan "@extract\\s+(.+)" line))
+  (:process (line input output cont)
+	    (register-groups-bind (extract-name) ("@extract\\s+(.+)" line)
+              ;; Build and register the extracted piece for later processing
+              ;; Redirect the output to the "extract output"
+              (with-output-to-string (extract-output)
+                (let ((*current-extract* (list :name extract-name
+                                               :output extract-output
+                                               :original-output output)))
+                  (funcall cont :output extract-output))))))
+
+(define-command end-extract
+  (:match (line)
+    (scan "@end extract" line))
+  (:process (line input output cont)
+            (push (cons (getf *current-extract* :name)
+                        (getf *current-extract* :output))
+                  *extracts*)
+            ;; Restore the output
+            (funcall cont :output (getf *current-extract* :original-output))))
+
+(define-command insert
+  (:match (line)
+    (scan "@insert\\s+(.+)" line))
+  (:process (line input output cont)
+	    (register-groups-bind (extract-name) ("@insert\\s+(.+)" line)
+              ;; Insert the extract
+              (let ((extract (find-extract extract-name)))
+                (write-string (get-output-stream-string (cdr extract))
+                              output)
+                (funcall cont)))))
 
 (defmethod process-doc ((input-type (eql :latex)) output-type line stream cont)
   (write-string line stream)

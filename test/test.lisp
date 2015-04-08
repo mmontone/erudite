@@ -74,3 +74,13 @@ This is a good chunk
 
 \\end{code}"
 )))
+
+(test extract-test
+  (is 
+   (equalp
+    (erudite::process-file-to-string (test-file "extract1.lisp"))
+    "Extract test
+This has been extracted
+\\begin{code}
+(+ 1 2)
+\\end{code}")))
