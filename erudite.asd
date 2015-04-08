@@ -4,7 +4,9 @@
   :license "MIT"
   :serial t
   :components ((:file "package")
-               (:file "erudite"))
+	       (:file "util")
+	       (:file "erudite")
+	       (:file "commands"))
   :depends-on (:cl-fad
 	       :cl-ppcre
 	       :alexandria
