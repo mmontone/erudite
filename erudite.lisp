@@ -1,18 +1,24 @@
 #|
 
-\chapter{Introduction}
+@section Introduction
 
-\emph{Erudite} is a very simple system for Literate Programming in Common Lisp.
+@emph{Erudite} is a system for Literate Programming in Common Lisp.
 
 Some of its salient features are:
 
-\begin{itemize}
+@list
 
-\item Documentation is written in Common Lisp comments. This is very useful because you can work with your program as if it were not a literate program: you can load it, work from SLIME, etc, directly.
+@item Documentation is written in Common Lisp comments. This is very useful because you can work with your program as if it were not a literate program: you can load it, work from SLIME, etc, directly.
 
-\item There are no chunks weaving or special directives like in original LP systems. This is not so cool, as there's no flexible way of controlling the order of the comments and code, like in other systems. But like Haskell (and its LP support), Lisp code is also pretty easy to sort without too much problems (I think...).
+@item Multiple outputs. Like Latex, Sphinx, etc.
 
-\end{itemize}
+@item Automatic indexing and cross-references.
+
+@item A command line interface.
+
+@item It is portable. You can compile and use in several CL systems.
+
+@end list
 
 @ignore
 |#
@@ -21,15 +27,15 @@ Some of its salient features are:
 #|
 @end ignore
 
-\chapter{Invocation}
+@section Invocation
 
 Erudite is invoked calling @ref{erudite} function.
 
 @insert erudite-function
 
-\chapter{Implementation}
+@section Implementation
 
-First, files with literate code are parsed into \emph{fragments}. Fragments can be of type \textit{documentation} or type \textit{code}. \textit{documentation} is the text that appears in Common Lisp comments. \textit{code} fragments are the rest.
+First, files with literate code are parsed into @emph{fragments}. Fragments can be of type @it{documentation} or type @it{code}. @it{documentation} is the text that appears in Common Lisp comments. @it{code} fragments are the rest.
 |#
 
 (defvar *short-comments-prefix* ";;")
@@ -303,11 +309,11 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 
 #|
 
-\chapter{Backends}
+@section Backends
 
-\emph{Erudite} supports LaTeX and Sphinx generation at the moment.
+@emph{Erudite} supports LaTeX and Sphinx generation at the moment.
 
-\section{LaTeX}
+@subsection LaTeX
 |#
 
 (defgeneric gen-doc (output-type pathname files &rest args))
@@ -339,7 +345,7 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
       t)))  
 #|
 
-\section{Sphinx}
+@subsection Sphinx
 
 Sphinx is the other kind of output apart from LaTeX.
 
