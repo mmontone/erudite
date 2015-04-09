@@ -1,4 +1,5 @@
 (defpackage #:erudite
   (:use #:cl #:cl-ppcre)
-  (:export #:erudite))
+  (:export #:erudite)
+  (:documentation "Erudite is a Literate Programming System for Common Lisp"))
 

@@ -1,36 +1,23 @@
 # ERUDITE
 
-Erudite is a simple Literate Programming system for Common Lisp.
-
-[Example output](https://github.com/cldm/erudite/raw/master/doc/erudite.pdf)
+Erudite is a Literate Programming System for Common Lisp
 
 ## Functions
-### gen-latex-doc
+### erudite
 
 ```lisp
-(pathname files &key title author template-pathname)
+(pathname files &rest args &key (output-type *output-type*)
+          (input-type *input-type*) &allow-other-keys)
 ```
 
-Generates a LaTeX document.
+Processes literate lisp files and creates a document.
 
-- **pathname**: The pathname of the .tex file to generate.
-- **files**: The list of .lisp files to compile
-- **title**: Title of the document
-- **author**: Author of the document
-- **template-pathname**: A custom LaTeX template file. If none is specified, a default template is used.
-
-
-
-
-### gen-sphinx-doc
-
-```lisp
-(pathname files &key prelude postlude)
-```
-
-Generates Sphinx document.
-
-- **pathname**: Pathname of the .rst file to generate.
-- **files**: .lisp files to compile.
-- **prelude**: String (or pathname) to append before the Sphinx document.
-- **postlude**: String (or pathname) to append after the Sphinx document.
+- **pathname**: Pathname of the file to generate
+- **files**: Literate lisp files to compile
+- **args**: All sort of options passed to the generation functions
+- **output-type**: The kind of document to generate.
+                   One of :latex, :sphinx
+                   Default: :latex
+- **input-type**:  The kind of syntax used in the literate source files.
+                   One of: :erudite, :latex, :sphinx.
+                   Default: :erudite
