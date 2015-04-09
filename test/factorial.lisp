@@ -1,5 +1,3 @@
-;; @title Factorial function
-;; @section Implementation
 ;; This is the factorial function:
 (defun factorial (n)
   (if (<= n 1)
