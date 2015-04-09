@@ -1,5 +1,5 @@
 ;; @echo chunk4
 ;; The end
 ;; @chunk chunk4
-;; Start
+(print "Start")
 ;; @end chunk

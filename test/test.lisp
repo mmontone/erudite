@@ -84,17 +84,21 @@ a long comment")))
   (is 
    (equalp
     (erudite::process-file-to-string (test-file "chunk1.lisp"))
-    "<<<chunk1>>>
+    "This is a good chunk
+\\begin{code}
+<<<chunk1>>>
+\\end{code}
 "))
   (is 
    (equalp
     (erudite::process-file-to-string (test-file "chunk2.lisp"))
-    "<<<chunk2>>>
-This is the chunk:
-<<chunk2>>=
-This is a good chunk
+    "This is a good chunk
 \\begin{code}
-
+<<<chunk2>>>
+\\end{code}
+This is the chunk:
+\\begin{code}
+<<chunk2>>=
 (+ 1 1)
 
 \\end{code}
@@ -105,11 +109,16 @@ This is a good chunk
 (is 
  (equalp
   (erudite::process-file-to-string (test-file "chunk4.lisp"))
-  "<<chunk4>>=
-Start
+  "\\begin{code}
+<<chunk4>>=
+(print \"Start\")
+
+\\end{code}
 The end
+\\begin{code}
 <<<chunk4>>>
-")))  
+\\end{code}
+")))
 
 (test extract-test
   (is 

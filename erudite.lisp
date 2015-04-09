@@ -81,7 +81,8 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
      (with-input-from-string (f string)
        (with-output-to-string (s)
          (erudite::process-fragments
-          (erudite::split-file-source f)
+	  (erudite::split-file-source 
+	   (extract-chunks f))
           s))))))
 
 (defun post-process-output (str)
@@ -140,7 +141,7 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
             (write-string line chunk-output)
             (terpri chunk-output)))
          (t
-          (write-string line output)
+	  (write-string line output)
 	  (terpri output))))))
 
 (defun split-file-source (str)
