@@ -1,6 +1,8 @@
 #|
 
 @title Erudite
+@subtitle Literate Programming System for Common Lisp
+
 @author Mariano Montone
 @syntax erudite
 
@@ -14,7 +16,9 @@ Some of its salient features are:
 
 @item Documentation is written in Common Lisp comments. This is very useful because you can work with your program as if it were not a literate program: you can load it, work from SLIME, etc, directly.
 
-@item Multiple outputs. Like Latex, Sphinx, etc.
+@item Multiple syntaxes. Multiple type of literate syntax are supported. It is possible to choose from the default Erudite syntax, or use plain Latex or Sphinx syntax, and potentially others.
+
+@item Multiple outputs. Like Latex, Sphinx, Markdown, HTML, etc.
 
 @item Automatic indexing and cross-references.
 
@@ -349,7 +353,9 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 (defgeneric gen-doc (output-type output files &rest args))
 
 (defmethod gen-doc ((output-type (eql :latex)) output files
-                    &key (title *title*)
+                    &key 
+		      (title *title*)
+		      (subtitle *subtitle*)
                       (author *author*)
                       template-pathname
                       (syntax *syntax*)
@@ -359,7 +365,8 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 
    Args: - output: The output stream.
          - files: The list of .lisp files to compile
-         - title: Title of the document
+         - title: Document title.
+         - subtitle: Document subtitle.
          - author: Author of the document
          - template-pathname: A custom LaTeX template file. If none is specified, a default template is used."
   (let ((*latex-document-class* document-class))
@@ -373,6 +380,8 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
        (funcall template (list :title (or title 
 					  *title* 
 					  (error "No document title specified"))
+			       :subtitle (or subtitle
+					     *subtitle*)	     
                                :author (or author 
 					   *author*
 					   (error "No document author specified"))

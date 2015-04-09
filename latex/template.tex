@@ -1,4 +1,4 @@
-\documentclass[11pt,pdflatex,makeidx]{book}   % Book class in 11 points
+\documentclass[11pt,pdflatex,makeidx]{scrbook}   % Book class in 11 points
 \usepackage[margin=0.5in]{geometry}
 \usepackage{makeidx}
 \usepackage{hyperref}
@@ -10,12 +10,17 @@
 \lstnewenvironment{code}{}{}
 \parindent0pt  \parskip10pt             % make block paragraphs
 \raggedright                            % do not right justify
-\title{\bf <%= (@ title)%>}
-\author{<%= (@ author) %>}
-\date{\today}                           %   Use current date.
 % Note that book class by default is formatted to be printed back-to-back.
 \makeindex
 \begin{document}                        % End of preamble, start of text.
+\title{\bf <%= (@ title)%>}
+<% if (@ subtitle) %>
+\subtitle{<%= (@ subtitle)%>}
+<% end %>
+<% if (@ author) %>
+\author{<%= (@ author) %>}
+<% end %>
+\date{\today}                           %   Use current date.
 \frontmatter                            % only in book class (roman page #s)
 \maketitle                              % Print title page.
 \tableofcontents                        % Print table of contents

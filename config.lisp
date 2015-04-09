@@ -4,6 +4,7 @@
 (defvar *syntax* :erudite)
 (defvar *output-type* :latex)
 (defvar *title* nil)
+(defvar *subtitle* nil)
 (defvar *author* nil)
 (defvar *current-path* nil)
 (defvar *chunks* nil)

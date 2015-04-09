@@ -63,6 +63,16 @@
               (setf *title* title))
             (funcall cont)))
 
+;; @subsubsection Subtitle
+
+(define-command subtitle
+  (:match (line)
+    (scan "@subtitle\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (subtitle) ("@subtitle\\s+(.+)" line)
+              (setf *subtitle* subtitle))
+            (funcall cont)))
+
 ;; @subsubsection Author
 
 (define-command author
