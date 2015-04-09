@@ -200,7 +200,10 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
            (comment
             (with-output-to-string (s)
               (register-groups-bind (comment-line) (comment-regex line)
-                (write-string comment-line s)))))
+                (write-string 
+		 (string-left-trim (list #\; #\ ) 
+				   comment-line)
+		 s)))))
       (list :doc comment))))
 
 (defun parse-code (line stream)
