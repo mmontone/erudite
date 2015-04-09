@@ -42,6 +42,7 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
 (defvar *input-type* :erudite)
 (defvar *output-type* :latex)
 (defvar *current-path* nil)
+(defvar *chunks* nil)
 
 (defmethod process-file-to-string ((pathname pathname))
   (let ((*current-path* (fad:pathname-directory-pathname pathname)))
@@ -49,7 +50,8 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
       (post-process-output
        (with-output-to-string (s)
          (process-fragments
-          (split-file-source f)
+          (split-file-source
+           (extract-chunks f))
           s))))))
 
 (defmethod process-file-to-string ((files cons))
@@ -57,10 +59,11 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
    (with-output-to-string (s)
      (process-fragments
       (loop
-	 :for file :in files
-        :appending (let ((*current-path* (fad:pathname-directory-pathname file)))
-                     (with-open-file (f file)
-                       (split-file-source f))))
+         :for file :in files
+         :appending (let ((*current-path* (fad:pathname-directory-pathname file)))
+                      (with-open-file (f file)
+                        (split-file-source
+                         (extract-chunks f)))))
       s))))
 
 (defmethod process-file-to-string :before (pathname)
@@ -98,8 +101,7 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
               (let ((chunk (find-chunk chunk-name)))
                 (write-chunk chunk-name
                              (get-output-stream-string (cdr chunk))
-                             output
-                             *output-type*))))
+                             output))))
            ((scan "^__INSERT_EXTRACT__(.*)$" line)
             (register-groups-bind (extract-name)
                 ("^__INSERT_EXTRACT__(.*)$" line)
@@ -113,15 +115,43 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
 
 ;;; The parser works like a custom look-ahead parser, with a whole file line
 ;;; being the slice looked ahead. And is implemented in Continuation Passing Style.
-
-(defun split-file-source (stream)
+(defun extract-chunks (stream)
   "Splits a file source in docs and code"
-  (append-source-fragments
-   (loop
-      :for line := (read-line stream nil)
-      :while line
-      :collect
-      (parse-line line stream))))
+  (with-output-to-string (output)
+    (loop
+       :with current-chunk := nil
+       :for line := (read-line stream nil)
+       :while line
+       :do
+       (cond
+         ((scan "@chunk\\s+(.+)" line)
+          (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
+            (setf current-chunk (list :name chunk-name
+                                      :output (make-string-output-stream)))
+            (write-chunk-name chunk-name output)
+	    (terpri output)))
+         ((scan "@end chunk" line)
+          (push (cons (getf current-chunk :name)
+                      (getf current-chunk :output))
+                *chunks*)
+          (setf current-chunk nil))
+         (current-chunk
+          (let ((chunk-output (getf current-chunk :output)))
+            (write-string line chunk-output)
+            (terpri chunk-output)))
+         (t
+          (write-string line output)
+	  (terpri output))))))
+
+(defun split-file-source (str)
+  "Splits a file source in docs and code"
+  (with-input-from-string (stream str)
+    (append-source-fragments
+     (loop
+        :for line := (read-line stream nil)
+        :while line
+        :collect
+        (parse-line line stream)))))
 
 (defun parse-line (line stream)
   (or
@@ -273,18 +303,14 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
   (write-string "\\end{code}" stream)
   (terpri stream))
 
-(defmethod write-chunk-name (chunk-name stream (output-type (eql :latex)))
+(defmethod write-chunk-name (chunk-name stream)
   (write-string "<<<" stream)
   (write-string chunk-name stream)
-  (write-string ">>>" stream)
-  (terpri stream))
+  (write-string ">>>" stream))
 
-(defmethod write-chunk (chunk-name chunk stream (output-type (eql :latex)))
-  (write-string "<<" stream)
-  (write-string chunk-name stream)
-  (write-string ">>=" stream)
-  (terpri stream)
-  (write-string chunk stream))
+(defmethod write-chunk (chunk-name chunk stream)
+  (write-code (format nil "<<~A>>=~%~A" chunk-name chunk)
+              stream *output-type*))
 
 #|
 
@@ -319,8 +345,8 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 (defgeneric gen-doc (output-type pathname files &rest args))
 
 (defmethod gen-doc ((output-type (eql :latex)) pathname files
-                    &key title author template-pathname input-type 
-		      document-class &allow-other-keys)
+                    &key title author template-pathname input-type
+                      document-class &allow-other-keys)
   "Generates a LaTeX document.
 
    Args: - pathname: The pathname of the .tex file to generate.
@@ -330,19 +356,19 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
          - template-pathname: A custom LaTeX template file. If none is specified, a default template is used."
   (let ((*latex-document-class* document-class))
     (let ((template (cl-template:compile-template
-		     (file-to-string (or template-pathname
-					 (asdf:system-relative-pathname
-					  :erudite
-					  "latex/template.tex"))))))
+                     (file-to-string (or template-pathname
+                                         (asdf:system-relative-pathname
+                                          :erudite
+                                          "latex/template.tex"))))))
       (with-open-file (f pathname :direction :output
-			 :if-exists :supersede
-			 :if-does-not-exist :create)
-	(write-string
-	 (funcall template (list :title title
-				 :author author
-				 :body (process-file-to-string files)))
-	 f))
-      t)))  
+                         :if-exists :supersede
+                         :if-does-not-exist :create)
+        (write-string
+         (funcall template (list :title title
+                                 :author author
+                                 :body (process-file-to-string files)))
+         f))
+      t)))
 #|
 
 @subsection Sphinx
@@ -384,13 +410,13 @@ Sphinx is the other kind of output apart from LaTeX.
    Args: - pathname: Pathname of the file to generate
          - files: Literate lisp files to compile
          - args: All sort of options passed to the generation functions
-         - output-type: The kind of document to generate. 
+         - output-type: The kind of document to generate.
                         One of :latex, :sphinx
                         Default: :latex
          - input-type: The kind of syntax used in the literate source files.
                        One of: :erudite, :latex, :sphinx.
                        Default: :erudite"
- 
+
   (let ((*output-type* output-type)
         (*input-type* input-type))
     (apply #'gen-doc output-type pathname files args)))

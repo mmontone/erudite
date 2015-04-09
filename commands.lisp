@@ -46,38 +46,9 @@
 
 ;; @subsubsection Chunks
 
-(defvar *chunks* nil)
-(defvar *current-chunk* nil)
-
 (defun find-chunk (chunk-name &key (error-p t))
   (or (assoc chunk-name *chunks* :test #'equalp)
       (error "Chunk not defined: ~A" chunk-name)))
-
-(define-command chunk
-  (:match (line)
-    (scan "@chunk\\s+(.+)" line))
-  (:process (line input output cont)
-            (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
-              ;; Output the chunk name
-              (write-chunk-name chunk-name output *output-type*)
-	      ;; Build and register the chunk for later processing
-              ;; Redirect the output to the "chunk output"
-	      (let* ((chunk-output (make-string-output-stream))
-		     (*current-chunk* (list :name chunk-name
-					    :output chunk-output
-					    :original-output output)))
-                  (funcall cont :output chunk-output)
-                  ))))
-
-(define-command end-chunk
-  (:match (line)
-    (scan "@end chunk" line))
-  (:process (line input output cont)
-            (push (cons (getf *current-chunk* :name)
-                        (getf *current-chunk* :output))
-                  *chunks*)
-            ;; Restore the output
-            (funcall cont :output (getf *current-chunk* :original-output))))
 
 (define-command echo
   (:match (line)
