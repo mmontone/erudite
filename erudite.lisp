@@ -1,5 +1,9 @@
 #|
 
+@title Erudite
+@author Mariano Montone
+@input-type erudite
+
 @section Introduction
 
 @emph{Erudite} is a system for Literate Programming in Common Lisp.
@@ -38,12 +42,6 @@ Erudite is invoked calling @ref{erudite} function.
 First, files with literate code are parsed into @emph{fragments}. Fragments can be of type @it{documentation} or type @it{code}. @it{documentation} is the text that appears in Common Lisp comments. @it{code} fragments are the rest.
 |#
 
-(defvar *short-comments-prefix* ";;")
-(defvar *input-type* :erudite)
-(defvar *output-type* :latex)
-(defvar *current-path* nil)
-(defvar *chunks* nil)
-
 (defmethod process-file-to-string ((pathname pathname))
   (let ((*current-path* (fad:pathname-directory-pathname pathname)))
     (with-open-file (f pathname)
@@ -80,8 +78,8 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
     (post-process-output
      (with-input-from-string (f string)
        (with-output-to-string (s)
-         (erudite::process-fragments
-	  (erudite::split-file-source 
+         (process-fragments
+	  (split-file-source 
 	   (extract-chunks f))
           s))))))
 
@@ -351,8 +349,12 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 (defgeneric gen-doc (output-type pathname files &rest args))
 
 (defmethod gen-doc ((output-type (eql :latex)) pathname files
-                    &key title author template-pathname input-type
-                      document-class &allow-other-keys)
+                    &key (title *title*) 
+		      (author *author*)
+		      template-pathname 
+		      (input-type *input-type*)
+                      (document-class *latex-document-class*)
+		      &allow-other-keys)
   "Generates a LaTeX document.
 
    Args: - pathname: The pathname of the .tex file to generate.
@@ -365,14 +367,15 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                      (file-to-string (or template-pathname
                                          (asdf:system-relative-pathname
                                           :erudite
-                                          "latex/template.tex"))))))
+                                          "latex/template.tex")))))
+	  (body (process-file-to-string files)))
       (with-open-file (f pathname :direction :output
                          :if-exists :supersede
                          :if-does-not-exist :create)
         (write-string
-         (funcall template (list :title title
-                                 :author author
-                                 :body (process-file-to-string files)))
+         (funcall template (list :title (or title *title*)
+                                 :author (or author *author*)
+                                 :body body))
          f))
       t)))
 #|
@@ -408,9 +411,10 @@ Sphinx is the other kind of output apart from LaTeX.
 
 ;; @extract erudite-function
 
-(defun erudite (pathname files  &rest args &key (output-type *output-type*)
-                                             (input-type *input-type*)
-                                             &allow-other-keys)
+(defun erudite (pathname file-or-files  
+		&rest args &key (output-type *output-type*)
+			     (input-type *input-type*)
+			     &allow-other-keys)
   "Processes literate lisp files and creates a document.
 
    Args: - pathname: Pathname of the file to generate
@@ -425,6 +429,11 @@ Sphinx is the other kind of output apart from LaTeX.
 
   (let ((*output-type* output-type)
         (*input-type* input-type))
-    (apply #'gen-doc output-type pathname files args)))
+    (apply #'gen-doc output-type 
+	   pathname 
+	   (if (listp file-or-files)
+	       file-or-files
+	       (list file-or-files))
+	   args)))
 
 ;; @end extract

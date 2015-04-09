@@ -44,6 +44,35 @@
               (setf *input-type* (intern (string-upcase input-type) :keyword)))
             (funcall cont)))
 
+;; @subsubsection Output type
+(define-command output-type
+  (:match (line)
+    (scan "@output-type\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (output-type) ("@output-type\\s+(.+)" line)
+              (setf *output-type* (intern (string-upcase output-type) :keyword)))
+            (funcall cont)))
+
+;; @subsubsection Title
+
+(define-command title
+  (:match (line)
+    (scan "@title\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (title) ("@title\\s+(.+)" line)
+              (setf *title* title))
+            (funcall cont)))
+
+;; @subsubsection Author
+
+(define-command author
+  (:match (line)
+    (scan "@author\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (author) ("@author\\s+(.+)" line)
+              (setf *author* author))
+            (funcall cont)))
+
 ;; @subsubsection Chunks
 
 (defun find-chunk (chunk-name &key (error-p t))

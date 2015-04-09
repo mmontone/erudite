@@ -1,9 +1,10 @@
 (asdf:defsystem #:erudite
-  :description "Poor Lisper's Literate Programming System"
+  :description "Literate Programming System for Common Lisp"
   :author "Mariano Montone <marianomontone@gmail.com>"
   :license "MIT"
   :serial t
   :components ((:file "package")
+	       (:file "config")
 	       (:file "util")
 	       (:file "commands")
 	       (:module :syntax

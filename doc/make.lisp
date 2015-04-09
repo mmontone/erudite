@@ -19,8 +19,8 @@
   (erudite:erudite
    (asdf:system-relative-pathname :erudite "doc/erudite.tex")
    *files*
-   :title "Erudite Developer Manual"
-   :author "Mariano Montone"
-   :input-type :erudite
+   ;:title "Erudite Developer Manual"
+   ;:author "Mariano Montone"
+   ;:input-type :erudite
    :output-type :latex
    :document-class :book))
