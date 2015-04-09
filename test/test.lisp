@@ -1,8 +1,12 @@
+;; @section Tests
+
 (defpackage erudite.test
   (:use :cl :fiveam :erudite)
   (:export :run-tests))
 
 (in-package :erudite.test)
+
+;; Tests are run with @ref{run-tests}
 
 (defun run-tests ()
   (run! 'erudite-tests))
@@ -10,6 +14,8 @@
 (def-suite erudite-tests)
 
 (in-suite erudite-tests)
+
+;; @extract long-comment-test
 
 (test parse-long-comment-test
   (is (equalp
@@ -48,6 +54,10 @@ a long comment
 |#")
          (erudite::parse-long-comment (read-line s) s)))))
 
+;; @end extract
+
+;; @extract short-comment-test
+
 (test parse-short-comment-test
   (is (equalp
        (with-input-from-string (s ";; a short comment")
@@ -63,6 +73,8 @@ a long comment
   (is (null
        (with-input-from-string (s "a ;; short comment")
 	 (erudite::parse-short-comment (read-line s) s)))))
+
+;; @end extract
 
 (defun test-file (filename)
   (merge-pathnames filename
@@ -89,7 +101,9 @@ a long comment
 \\end{code}
 ")))
 
-(test chunk-test
+;; @extract chunks-test
+
+(test chunks-test
   (is
    (equalp
     (erudite::process-file-to-string (test-file "chunk1.lisp"))
@@ -153,6 +167,10 @@ The recursive step is \\verb|n x n - 1|:
 \\end{code}
 ")))
 
+;; @end extract
+
+;; @extract extract-test
+
 (test extract-test
   (is
    (equalp
@@ -173,6 +191,10 @@ Extract 3
 End
 ")))
 
+;; @end extract
+
+;; @extract ignore-test
+
 (test ignore-test
   (is
    (equalp
@@ -183,6 +205,10 @@ This is not ignored
 (+ 1 3)
 \\end{code}
 ")))
+
+;; @end extract
+
+;; @extract include-test
 
 (test include-test
   (is
@@ -203,6 +229,11 @@ This is includeB
 \\end{code}
 
 ")))
+
+;; @end extract
+
+
+;; @extract erudite-syntax-tests
 
 ;; Erudite syntax tests
 
@@ -288,3 +319,5 @@ This is verbatim
 \\item Item 2
 \\end{itemize}
 ")))
+
+;; @end extract

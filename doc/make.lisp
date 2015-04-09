@@ -12,8 +12,10 @@
 (defparameter *files* 
   (mapcar #'system-file 
 	  (list "erudite.lisp"
+		"cli.lisp"
 		"commands.lisp"
-		"syntax/erudite.lisp")))
+		"syntax/erudite.lisp"
+		"test/test.lisp")))
 
 (defun make ()
   (erudite:erudite

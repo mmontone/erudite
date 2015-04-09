@@ -1,3 +1,47 @@
+#| @section Command line interface
+
+It is possible to invoke @emph{Erudite} from the command line
+ 
+Run @verb{make} to build @verb{erudite} executable.
+
+This is the command line syntax:
+
+@verbatim
+Usage: erudite [-hvd] [+vd] [OPTIONS] FILES...
+
+Erudite is a Literate Programming System for Common Lisp
+  -h, --help                  Print this help and exit.
+  --version                   Print Erudite version
+  -(+)v, --verbose[=yes/no]   Run in verbose mode
+                              Fallback: yes
+                              Environment: VERBOSE
+  -(+)d, --debug[=on/off]     Turn debugging on or off.
+                              Fallback: on
+                              Environment: DEBUG
+  -o, --output=OUTPUT         The output file. If none is used, result is 
+                              printed to stdout
+  --output-type=OUTPUT-TYPE   The output type. One of 'latex', 'sphinx'
+                              Default: latex
+  --syntax=SYNTAX             The syntax used in source files. One of 'latex', 
+                              'sphinx', 'erudite'
+                              Default: erudite
+  --author=AUTHOR             The author to appear in the document
+  --title=TITLE               The document title
+@end verbatim
+
+Then run @verb{sudo make install} to install globally in your system
+
+Here is an example usage:
+@verbatim
+erudite -o erudite.tex erudite.lisp
+@end verbatim
+
+@subsection Implementation
+
+The command line is implemented via the @emph{com.dvl.clon} library.
+
+|#
+
 (ql:quickload :com.dvlsoft.clon)
 (ql:quickload :erudite)
 

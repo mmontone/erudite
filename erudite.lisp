@@ -118,6 +118,7 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
 
 ;;; The parser works like a custom look-ahead parser, with a whole file line
 ;;; being the slice looked ahead. And is implemented in Continuation Passing Style.
+;;; @subsection Chunks extraction
 (defun extract-chunks (stream)
   "Splits a file source in docs and code"
   (with-output-to-string (output)
@@ -145,6 +146,9 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
          (t
           (write-string line output)
           (terpri output))))))
+
+;; @it{Tests:}
+;; @insert chunks-test
 
 (defun split-file-source (str)
   "Splits a file source in docs and code"

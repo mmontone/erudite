@@ -138,6 +138,9 @@
               (format output "__INSERT_EXTRACT__~A~%" extract-name)
 	      (funcall cont))))
 
+;; @bold{Tests}
+;; @insert extract-test
+
 ;; @subsubsection Ignore
 
 (defvar *ignore* nil)
