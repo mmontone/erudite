@@ -79,8 +79,8 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
      (with-input-from-string (f string)
        (with-output-to-string (s)
          (process-fragments
-	  (split-file-source 
-	   (extract-chunks f))
+          (split-file-source
+           (extract-chunks f))
           s))))))
 
 (defun post-process-output (str)
@@ -128,7 +128,7 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
             (setf current-chunk (list :name chunk-name
                                       :output (make-string-output-stream)))
             (write-chunk-name chunk-name output)
-	    (terpri output)))
+            (terpri output)))
          ((scan "@end chunk" line)
           (push (cons (getf current-chunk :name)
                       (getf current-chunk :output))
@@ -139,8 +139,8 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
             (write-string line chunk-output)
             (terpri chunk-output)))
          (t
-	  (write-string line output)
-	  (terpri output))))))
+          (write-string line output)
+          (terpri output))))))
 
 (defun split-file-source (str)
   "Splits a file source in docs and code"
@@ -188,20 +188,20 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
       (list :doc comment))))
 
 (defun parse-short-comment (line stream)
-  (when (equalp 
-	 (search *short-comments-prefix*
-		 (string-left-trim (list #\  #\tab)
-				   line))
-	 0)
+  (when (equalp
+         (search *short-comments-prefix*
+                 (string-left-trim (list #\  #\tab)
+                                   line))
+         0)
     ;; A short comment was found
     (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
            (comment
             (with-output-to-string (s)
               (register-groups-bind (comment-line) (comment-regex line)
-                (write-string 
-		 (string-left-trim (list #\; #\ ) 
-				   comment-line)
-		 s)))))
+                (write-string
+                 (string-left-trim (list #\; #\ )
+                                   comment-line)
+                 s)))))
       (list :doc comment))))
 
 (defun parse-code (line stream)
@@ -346,18 +346,18 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 @subsection LaTeX
 |#
 
-(defgeneric gen-doc (output-type pathname files &rest args))
+(defgeneric gen-doc (output-type output files &rest args))
 
-(defmethod gen-doc ((output-type (eql :latex)) pathname files
-                    &key (title *title*) 
-		      (author *author*)
-		      template-pathname 
-		      (input-type *input-type*)
+(defmethod gen-doc ((output-type (eql :latex)) output files
+                    &key (title *title*)
+                      (author *author*)
+                      template-pathname
+                      (input-type *input-type*)
                       (document-class *latex-document-class*)
-		      &allow-other-keys)
+                      &allow-other-keys)
   "Generates a LaTeX document.
 
-   Args: - pathname: The pathname of the .tex file to generate.
+   Args: - output: The output stream.
          - files: The list of .lisp files to compile
          - title: Title of the document
          - author: Author of the document
@@ -368,16 +368,13 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                                          (asdf:system-relative-pathname
                                           :erudite
                                           "latex/template.tex")))))
-	  (body (process-file-to-string files)))
-      (with-open-file (f pathname :direction :output
-                         :if-exists :supersede
-                         :if-does-not-exist :create)
-        (write-string
-         (funcall template (list :title (or title *title*)
-                                 :author (or author *author*)
-                                 :body body))
-         f))
-      t)))
+          (body (process-file-to-string files)))
+      (write-string
+       (funcall template (list :title (or title *title*)
+                               :author (or author *author*)
+                               :body body))
+       output))
+    t))
 #|
 
 @subsection Sphinx
@@ -386,38 +383,53 @@ Sphinx is the other kind of output apart from LaTeX.
 
 |#
 
-(defmethod gen-doc ((output-type (eql :sphinx)) pathname files &key prelude postlude input-type &allow-other-keys)
+(defmethod gen-doc ((output-type (eql :sphinx)) output files &key prelude postlude input-type &allow-other-keys)
   "Generates Sphinx document.
 
-   Args: - pathname: Pathname of the .rst file to generate.
+   Args: - output: The output stream.
          - files: .lisp files to compile.
          - prelude: String (or pathname) to append before the Sphinx document.
          - postlude: String (or pathname) to append after the Sphinx document."
-  (with-open-file (f pathname :direction :output
-                     :if-exists :supersede
-                     :if-does-not-exist :create)
-    (when prelude
-      (write-string
-       (if (pathnamep prelude)
-           (file-to-string prelude)
-           prelude)
-       f))
-    (write-string (process-file-to-string files) f)
-    (when postlude
-      (write-string (if (pathnamep postlude)
-                        (file-to-string postlude)
-                        postlude)
-                    f))))
+  (when prelude
+    (write-string
+     (if (pathnamep prelude)
+         (file-to-string prelude)
+         prelude)
+     output))
+  (write-string (process-file-to-string files) output)
+  (when postlude
+    (write-string (if (pathnamep postlude)
+                      (file-to-string postlude)
+                      postlude)
+                  output)))
 
 ;; @extract erudite-function
 
-(defun erudite (pathname file-or-files  
-		&rest args &key (output-type *output-type*)
-			     (input-type *input-type*)
-			     &allow-other-keys)
+(defun call-with-destination (destination function)
+  (cond 
+    ((null destination)
+     (with-output-to-string (output)
+       (funcall function output)))
+    ((pathnamep destination)
+     (with-open-file (f destination :direction :output
+                     :if-exists :supersede
+                     :if-does-not-exist :create)
+       (funcall function f)))
+    ((streamp destination)
+     (funcall function destination))
+    (t (error "Invalid destination: ~A" destination))))
+
+(defmacro with-destination ((var destination) &body body)
+  `(call-with-destination ,destination
+			  (lambda (,var) ,@body)))
+
+(defun erudite (destination file-or-files
+                &rest args &key (output-type *output-type*)
+                             (input-type *input-type*)
+                             &allow-other-keys)
   "Processes literate lisp files and creates a document.
 
-   Args: - pathname: Pathname of the file to generate
+   Args: - destination: If NIL, output is written to a string. If a pathname, then a file is created. Otherwise, a stream is expected.
          - files: Literate lisp files to compile
          - args: All sort of options passed to the generation functions
          - output-type: The kind of document to generate.
@@ -426,14 +438,14 @@ Sphinx is the other kind of output apart from LaTeX.
          - input-type: The kind of syntax used in the literate source files.
                        One of: :erudite, :latex, :sphinx.
                        Default: :erudite"
-
-  (let ((*output-type* output-type)
-        (*input-type* input-type))
-    (apply #'gen-doc output-type 
-	   pathname 
-	   (if (listp file-or-files)
-	       file-or-files
-	       (list file-or-files))
-	   args)))
+  (with-destination (output destination)
+    (let ((*output-type* output-type)
+	  (*input-type* input-type))
+      (apply #'gen-doc output-type
+	     output
+	     (if (listp file-or-files)
+		 file-or-files
+		 (list file-or-files))
+	     args))))
 
 ;; @end extract
