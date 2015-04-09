@@ -41,7 +41,12 @@ a long comment")))
   (is (equalp
        (with-input-from-string (s "#| this is long comment in one line |#")
          (erudite::parse-long-comment (read-line s) s))
-       '(:DOC "this is a long comment in one line"))))
+       '(:DOC "this is a long comment in one line")))
+  (is (null
+       (with-input-from-string (s "foo #| this is
+a long comment
+|#")
+         (erudite::parse-long-comment (read-line s) s)))))
 
 (test parse-short-comment-test
   (is (equalp
@@ -53,7 +58,10 @@ a long comment")))
          (erudite::parse-short-comment (read-line s) s))))
   (is (null
        (with-input-from-string (s "a short comment")
-         (erudite::parse-short-comment (read-line s) s)))))
+         (erudite::parse-short-comment (read-line s) s))))
+  (is (null
+       (with-input-from-string (s "a ;; short comment")
+	 (erudite::parse-short-comment (read-line s) s)))))
 
 (defun test-file (filename)
   (merge-pathnames filename

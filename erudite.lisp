@@ -190,9 +190,11 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
       (list :doc comment))))
 
 (defun parse-short-comment (line stream)
-  (when (search *short-comments-prefix*
-                (string-left-trim (list #\  #\tab)
-                                  line))
+  (when (equalp 
+	 (search *short-comments-prefix*
+		 (string-left-trim (list #\  #\tab)
+				   line))
+	 0)
     ;; A short comment was found
     (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
            (comment
