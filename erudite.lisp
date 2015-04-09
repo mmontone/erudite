@@ -421,6 +421,8 @@ Sphinx is the other kind of output apart from LaTeX.
        (funcall function f)))
     ((streamp destination)
      (funcall function destination))
+    ((eql destination t)
+     (funcall function *standard-output*))
     (t (error "Invalid destination: ~A" destination))))
 
 (defmacro with-destination ((var destination) &body body)
@@ -433,7 +435,7 @@ Sphinx is the other kind of output apart from LaTeX.
                              &allow-other-keys)
   "Processes literate lisp files and creates a document.
 
-   Args: - destination: If NIL, output is written to a string. If a pathname, then a file is created. Otherwise, a stream is expected.
+   Args: - destination: If NIL, output is written to a string. If T, output is written to *standard-output*. If a pathname, then a file is created. Otherwise, a stream is expected.
          - files: Literate lisp files to compile
          - args: All sort of options passed to the generation functions
          - output-type: The kind of document to generate.
