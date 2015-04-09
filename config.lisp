@@ -1,7 +1,7 @@
 (in-package :erudite)
 
 (defvar *short-comments-prefix* ";;")
-(defvar *input-type* :erudite)
+(defvar *syntax* :erudite)
 (defvar *output-type* :latex)
 (defvar *title* nil)
 (defvar *author* nil)

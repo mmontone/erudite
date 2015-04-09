@@ -2,7 +2,7 @@
 
 @title Erudite
 @author Mariano Montone
-@input-type erudite
+@syntax erudite
 
 @section Introduction
 
@@ -273,20 +273,20 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
   (let ((command (find-matching-command line)))
     (if command
         (process-command command line input output cont)
-        (process-doc *input-type* *output-type* line output cont))))
+        (process-doc *syntax* *output-type* line output cont))))
 
 
-(defmethod process-doc ((input-type (eql :latex)) output-type line stream cont)
+(defmethod process-doc ((syntax (eql :latex)) output-type line stream cont)
   (write-string line stream)
   (terpri stream)
   (funcall cont))
 
-(defmethod process-doc ((input-type (eql :sphinx)) output-type line stream cont)
+(defmethod process-doc ((syntax (eql :sphinx)) output-type line stream cont)
   (write-string line stream)
   (terpri stream)
   (funcall cont))
 
-(defmethod process-doc ((input-type (eql :erudite)) output-type line stream cont)
+(defmethod process-doc ((syntax (eql :erudite)) output-type line stream cont)
   (let ((formatted-line line))
     (loop
        :for syntax :in *erudite-syntax*
@@ -352,7 +352,7 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                     &key (title *title*)
                       (author *author*)
                       template-pathname
-                      (input-type *input-type*)
+                      (syntax *syntax*)
                       (document-class *latex-document-class*)
                       &allow-other-keys)
   "Generates a LaTeX document.
@@ -370,8 +370,12 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                                           "latex/template.tex")))))
           (body (process-file-to-string files)))
       (write-string
-       (funcall template (list :title (or title *title*)
-                               :author (or author *author*)
+       (funcall template (list :title (or title 
+					  *title* 
+					  (error "No document title specified"))
+                               :author (or author 
+					   *author*
+					   (error "No document author specified"))
                                :body body))
        output))
     t))
@@ -383,7 +387,7 @@ Sphinx is the other kind of output apart from LaTeX.
 
 |#
 
-(defmethod gen-doc ((output-type (eql :sphinx)) output files &key prelude postlude input-type &allow-other-keys)
+(defmethod gen-doc ((output-type (eql :sphinx)) output files &key prelude postlude syntax &allow-other-keys)
   "Generates Sphinx document.
 
    Args: - output: The output stream.
@@ -425,7 +429,7 @@ Sphinx is the other kind of output apart from LaTeX.
 
 (defun erudite (destination file-or-files
                 &rest args &key (output-type *output-type*)
-                             (input-type *input-type*)
+                             (syntax *syntax*)
                              &allow-other-keys)
   "Processes literate lisp files and creates a document.
 
@@ -435,12 +439,12 @@ Sphinx is the other kind of output apart from LaTeX.
          - output-type: The kind of document to generate.
                         One of :latex, :sphinx
                         Default: :latex
-         - input-type: The kind of syntax used in the literate source files.
+         - syntax: The kind of syntax used in the literate source files.
                        One of: :erudite, :latex, :sphinx.
                        Default: :erudite"
   (with-destination (output destination)
     (let ((*output-type* output-type)
-	  (*input-type* input-type))
+	  (*syntax* syntax))
       (apply #'gen-doc output-type
 	     output
 	     (if (listp file-or-files)

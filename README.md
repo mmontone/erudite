@@ -7,7 +7,7 @@ Erudite is a Literate Programming System for Common Lisp
 
 ```lisp
 (pathname files &rest args &key (output-type *output-type*)
-          (input-type *input-type*) &allow-other-keys)
+          (syntax *syntax*) &allow-other-keys)
 ```
 
 Processes literate lisp files and creates a document.
@@ -18,6 +18,6 @@ Processes literate lisp files and creates a document.
 - **output-type**: The kind of document to generate.
                    One of :latex, :sphinx
                    Default: :latex
-- **input-type**:  The kind of syntax used in the literate source files.
+- **syntax**:  The kind of syntax used in the literate source files.
                    One of: :erudite, :latex, :sphinx.
                    Default: :erudite

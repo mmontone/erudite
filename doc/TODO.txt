@@ -27,17 +27,17 @@ Some TODOs and ideas:
 
 * Single function with input/output type selection:
 
-    (erudite *out* *my-files* :input-type :latex)
-    (erudite *out* *my-files* :input-type :sphinx)
-    (erudite *out* *my-files* :input-type :html)
-    (erudite *out* *my-files* :input-type :markdown)
+    (erudite *out* *my-files* :syntax :latex)
+    (erudite *out* *my-files* :syntax :sphinx)
+    (erudite *out* *my-files* :syntax :html)
+    (erudite *out* *my-files* :syntax :markdown)
 
 * Custom syntax for multiple output types generation?:
     
-    (erudite *out* *my-files* :input-type :erudite :output-type :latex)
-    (erudite *out* *my-files* :input-type :erudite :output-type :sphinx)
-    (erudite *out* *my-files* :input-type :erudite :output-type :html)
-    (erudite *out* *my-files* :input-type :erudite :output-type :markdown)
+    (erudite *out* *my-files* :syntax :erudite :output-type :latex)
+    (erudite *out* *my-files* :syntax :erudite :output-type :sphinx)
+    (erudite *out* *my-files* :syntax :erudite :output-type :html)
+    (erudite *out* *my-files* :syntax :erudite :output-type :markdown)
 
 * Custom syntax look like?:
 
@@ -68,11 +68,11 @@ IDEA for this:  make the '@' or '\' character configurable.
 
        (erudite out files &rest options)
 
-  with options being :input-type, :output-type, plus specific options for input type and output-type.
+  with options being :syntax, :output-type, plus specific options for input type and output-type.
 
   Example:
 
-       (erudite out files :input-type :latex :document-class :book
+       (erudite out files :syntax :latex :document-class :book
                                              :listings t
                                              :date "\\today"
                                              :author "Mariano Montone"

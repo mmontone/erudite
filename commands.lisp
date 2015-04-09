@@ -36,12 +36,12 @@
 
 ;; @subsubsection Input type
 
-(define-command input-type
+(define-command syntax
   (:match (line)
-    (scan "@input-type\\s+(.+)" line))
+    (scan "@syntax\\s+(.+)" line))
   (:process (line input output cont)
-            (register-groups-bind (input-type) ("@input-type\\s+(.+)" line)
-              (setf *input-type* (intern (string-upcase input-type) :keyword)))
+            (register-groups-bind (syntax) ("@syntax\\s+(.+)" line)
+              (setf *syntax* (intern (string-upcase syntax) :keyword)))
             (funcall cont)))
 
 ;; @subsubsection Output type
@@ -146,7 +146,7 @@
             (setf *ignore* nil)
             (funcall cont)))
 
-(defmethod process-doc :around (input-type output-type line stream cont)
+(defmethod process-doc :around (syntax output-type line stream cont)
   (if *ignore*
       (funcall cont)
       (call-next-method)))

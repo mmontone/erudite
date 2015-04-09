@@ -21,6 +21,6 @@
    *files*
    ;:title "Erudite Developer Manual"
    ;:author "Mariano Montone"
-   ;:input-type :erudite
+   ;:syntax :erudite
    :output-type :latex
    :document-class :book))
