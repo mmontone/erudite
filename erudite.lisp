@@ -313,7 +313,8 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 (defgeneric gen-doc (output-type pathname files &rest args))
 
 (defmethod gen-doc ((output-type (eql :latex)) pathname files
-                    &key title author template-pathname input-type &allow-other-keys)
+                    &key title author template-pathname input-type 
+		      document-class &allow-other-keys)
   "Generates a LaTeX document.
 
    Args: - pathname: The pathname of the .tex file to generate.
@@ -321,21 +322,21 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
          - title: Title of the document
          - author: Author of the document
          - template-pathname: A custom LaTeX template file. If none is specified, a default template is used."
-  (let ((template (cl-template:compile-template
-                   (file-to-string (or template-pathname
-                                       (asdf:system-relative-pathname
-                                        :erudite
-                                        "latex/template.tex"))))))
-    (with-open-file (f pathname :direction :output
-                       :if-exists :supersede
-                       :if-does-not-exist :create)
-      (write-string
-       (funcall template (list :title title
-                               :author author
-                               :body (process-file-to-string files)))
-       f))
-    t))
-
+  (let ((*latex-document-class* document-class))
+    (let ((template (cl-template:compile-template
+		     (file-to-string (or template-pathname
+					 (asdf:system-relative-pathname
+					  :erudite
+					  "latex/template.tex"))))))
+      (with-open-file (f pathname :direction :output
+			 :if-exists :supersede
+			 :if-does-not-exist :create)
+	(write-string
+	 (funcall template (list :title title
+				 :author author
+				 :body (process-file-to-string files)))
+	 f))
+      t)))  
 #|
 
 \section{Sphinx}

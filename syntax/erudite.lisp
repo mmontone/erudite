@@ -172,6 +172,8 @@
 
 ;; @subsubsection Latex output
 
+(defvar *latex-document-class* :article)
+
 (defun format-syntax (destination syntax)
   (if (null destination)
       (with-output-to-string (stream)
@@ -182,19 +184,25 @@
 			   (selector (eql :section))
 			   stream
 			   syntax)
-  (format stream "\\section{~A}" (second syntax)))
+  (ecase *latex-document-class*
+    (:article (format stream "\\section{~A}" (second syntax)))
+    (:book (format stream "\\chapter{~A}" (second syntax)))))
 
 (defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :subsection))
 			   stream
 			   syntax)
-  (format stream "\\subsection{~A}" (second syntax)))
+  (ecase *latex-document-class*
+    (:article (format stream "\\subsection{~A}" (second syntax)))
+    (:book (format stream "\\section{~A}" (second syntax)))))
 
 (defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :subsubsection))
 			   stream
 			   syntax)
-  (format stream "\\subsubsection{~A}" (second syntax)))
+  (ecase *latex-document-class*
+    (:article (format stream "\\subsubsection{~A}" (second syntax)))
+    (:book (format stream "\\subsection{~A}" (second syntax)))))
 
 (defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :begin-verbatim))

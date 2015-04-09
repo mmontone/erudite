@@ -5,11 +5,11 @@
   :serial t
   :components ((:file "package")
 	       (:file "util")
-	       (:file "erudite")
 	       (:file "commands")
 	       (:module :syntax
 			:components
-			((:file "erudite"))))
+			((:file "erudite")))
+	       (:file "erudite"))
   :depends-on (:cl-fad
 	       :cl-ppcre
 	       :alexandria
