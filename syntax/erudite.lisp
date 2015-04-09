@@ -155,7 +155,7 @@
   (:process (line output output-type)
 	    (regex-replace-all "@verb{(.*?)}" line
 			       (lambda (match text)
-				 (format-syntax nil (list :verbatim text)))
+				 (format-syntax nil (list :inline-verbatim text)))
 			       :simple-calls t)))
 
 ;; @subsubsection Reference
@@ -215,6 +215,13 @@
 			   stream
 			   syntax)
   (format stream "\\end{verbatim}"))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :inline-verbatim))
+			   stream
+			   syntax)
+  (format stream "\\verb|~A|" (second syntax)))
+
 
 (defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :begin-code))
