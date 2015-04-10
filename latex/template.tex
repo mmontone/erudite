@@ -1,12 +1,15 @@
 \documentclass[11pt,pdflatex,makeidx]{scrbook}   % Book class in 11 points
 \usepackage[margin=0.5in]{geometry}
+\usepackage{color}
 \usepackage{makeidx}
 \usepackage{hyperref}
 \usepackage{listings}
 \usepackage{hyperref}
 \lstloadlanguages{Lisp}
 \lstset{frame=L,language=Lisp,
-  stringstyle=\ttfamily\small,basicstyle=\ttfamily\footnotesize,
+  basicstyle=\small,
+  keywordstyle=\color{black}\bfseries\underbar,
+  stringstyle=\ttfamily,
   showstringspaces=false,breaklines}
 \lstnewenvironment{code}{}{}
 \parindent0pt  \parskip10pt             % make block paragraphs
