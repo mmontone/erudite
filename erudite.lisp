@@ -322,6 +322,14 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
   (write-string (indent-code code) stream)
   (terpri stream))
 
+(defmethod write-code (code stream (output-type (eql :markdown)))
+  (terpri stream)
+  (write-string "```lisp" stream)
+  (terpri stream)
+  (write-string (indent-code code) stream)
+  (write-string "```" stream)
+  (terpri stream))
+
 (defmethod write-chunk-name (chunk-name stream)
   (write-string "<<<" stream)
   (write-string chunk-name stream)
@@ -371,6 +379,10 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
   ;; TODO: implement
   )
 
+(defmethod write-indexes (indexes output (output-type (eql :markdown)))
+  ;; TODO: implement
+  )
+
 (defun escape-latex (str)
   (let ((escaped str))
     (flet ((%replace (thing replacement)
@@ -416,14 +428,6 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
            (mapcar (lambda (line)
                      (format nil "     ~A~%" line))
                    lines))))
-
-(defmethod write-code (code stream (output-type (eql :sphinx)))
-  (terpri stream)
-  (write-string ".. code-block:: common-lisp" stream)
-  (terpri stream)
-  (terpri stream)
-  (write-string (indent-code code) stream)
-  (terpri stream))
 
 #|
 
@@ -487,6 +491,34 @@ Sphinx is the other kind of output apart from LaTeX.
          - files: .lisp files to compile.
          - prelude: String (or pathname) to append before the Sphinx document.
          - postlude: String (or pathname) to append after the Sphinx document."
+  (when prelude
+    (write-string
+     (if (pathnamep prelude)
+         (file-to-string prelude)
+         prelude)
+     output))
+  (write-string (process-file-to-string files) output)
+  (when postlude
+    (write-string (if (pathnamep postlude)
+                      (file-to-string postlude)
+                      postlude)
+                  output)))
+
+#|
+
+@subsection Markdown
+
+Markdown is another output type.
+
+|#
+
+(defmethod gen-doc ((output-type (eql :markdown)) output files &key prelude postlude syntax &allow-other-keys)
+  "Generates Markdown document.
+
+   Args: - output: The output stream.
+         - files: .lisp files to compile.
+         - prelude: String (or pathname) to append before the document.
+         - postlude: String (or pathname) to append after the document."
   (when prelude
     (write-string
      (if (pathnamep prelude)

@@ -11,7 +11,8 @@
 			:components
 			((:file "erudite")
 			 (:file "latex")
-			 (:file "sphinx")))
+			 (:file "sphinx")
+			 (:file "markdown")))
 	       (:file "erudite"))
   :depends-on (:cl-fad
 	       :cl-ppcre

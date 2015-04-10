@@ -2,7 +2,10 @@
 
 (defpackage erudite.doc
   (:use :cl)
-  (:export :make-latex :make-sphinx))
+  (:export 
+   :make-latex 
+   :make-sphinx
+   :make-markdown))
 
 (in-package :erudite.doc)
 
@@ -29,3 +32,9 @@
    (asdf:system-relative-pathname :erudite "doc/sphinx/index.rst")
    *files*
    :output-type :sphinx))
+
+(defun make-markdown ()
+  (erudite:erudite
+   (asdf:system-relative-pathname :erudite "doc/erudite.md")
+   *files*
+   :output-type :markdown))

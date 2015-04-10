@@ -6,7 +6,7 @@
   (when *sphinx-indent*
     (write-string "    " output)))
 
-;; @subsubsection Latex output
+;; @subsubsection Sphinx output
 
 (defmethod %format-syntax ((output-type (eql :sphinx))
 			   (selector (eql :section))

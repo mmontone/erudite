@@ -14,3 +14,6 @@ sphinx-pdf: _sphinx
 
 sphinx-html: _sphinx
 	cd sphinx; make html
+
+markdown:
+	sbcl --disable-debugger --load make.lisp --eval '(erudite.doc:make-markdown)' --quit
