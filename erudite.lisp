@@ -351,7 +351,9 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
     ; 	    (mapcar (alexandria:compose #'escape-latex #'second)
     ; 		    indexes))
     (loop for index in (remove-duplicates indexes :key #'second :test #'equalp)
-	 do (format output "\\index{~A}~%" (escape-latex (second index))))
+	 do 
+	 (format output "\\index{~A}~%" (escape-latex (second index)))
+	 (format output "\\label{~A}~%" (latex-label (second index))))
     (terpri output)))
 
 (defun escape-latex (str)
@@ -368,6 +370,22 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
       (%replace "\\}" "\\}")
       (%replace "\\~" "\\textasciitilde")
       (%replace "\\^" "\\textasciicircum")      
+      escaped)))
+
+(defun latex-label (str)
+  (let ((escaped str))
+    (flet ((%replace (thing replacement)
+	     (setf escaped (regex-replace-all thing escaped replacement))))
+      (%replace "\\\\" "=")
+      (%replace "\\&" "=")
+      (%replace "\\%" "=")
+      (%replace "\\$" "=")
+      (%replace "\\#" "=")
+      (%replace "\\_" "=")
+      (%replace "\\{" "=")
+      (%replace "\\}" "=")
+      (%replace "\\~" "=")
+      (%replace "\\^" "=")      
       escaped)))
 #|
 

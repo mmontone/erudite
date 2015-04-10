@@ -275,5 +275,6 @@
 			   (selector (eql :ref))
 			   stream
 			   syntax)
-  (format stream "\\verb#~A#" (second syntax)))
-
+  (format stream "\\hyperref[~A]{~A}"
+	  (escape-latex (second syntax))
+	  (latex-label (second syntax))))
