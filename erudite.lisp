@@ -299,9 +299,12 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
        :do
        (setf formatted-line (process-syntax syntax formatted-line stream output-type))
        :finally (when formatted-line
-                  (write-string formatted-line stream)))
+		  (write-doc-line formatted-line stream output-type)))
     (terpri stream)
     (funcall cont)))
+
+(defmethod write-doc-line (line stream output-type)
+  (write-string line stream))
 
 (defmethod write-code (code stream (output-type (eql :latex)))
   (write-string "\\begin{code}" stream)
@@ -309,6 +312,14 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
   (write-string code stream)
   (terpri stream)
   (write-string "\\end{code}" stream)
+  (terpri stream))
+
+(defmethod write-code (code stream (output-type (eql :sphinx)))
+  (terpri stream)
+  (write-string "..code-block:: common-lisp" stream)
+  (terpri stream)
+  (terpri stream)
+  (write-string (indent-code code) stream)
   (terpri stream))
 
 (defmethod write-chunk-name (chunk-name stream)
@@ -355,6 +366,10 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
 	 (format output "\\index{~A}~%" (escape-latex (second index)))
 	 (format output "\\label{~A}~%" (latex-label (second index))))
     (terpri output)))
+
+(defmethod write-indexes (indexes output (output-type (eql :sphinx)))
+  ;; TODO: implement
+  )
 
 (defun escape-latex (str)
   (let ((escaped str))
@@ -403,7 +418,9 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                    lines))))
 
 (defmethod write-code (code stream (output-type (eql :sphinx)))
+  (terpri stream)
   (write-string ".. code-block:: common-lisp" stream)
+  (terpri stream)
   (terpri stream)
   (write-string (indent-code code) stream)
   (terpri stream))

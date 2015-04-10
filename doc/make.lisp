@@ -2,7 +2,7 @@
 
 (defpackage erudite.doc
   (:use :cl)
-  (:export :make))
+  (:export :make-latex :make-sphinx))
 
 (in-package :erudite.doc)
 
@@ -17,12 +17,15 @@
 		"syntax/erudite.lisp"
 		"test/test.lisp")))
 
-(defun make ()
+(defun make-latex ()
   (erudite:erudite
    (asdf:system-relative-pathname :erudite "doc/erudite.tex")
    *files*
-   ;:title "Erudite Developer Manual"
-   ;:author "Mariano Montone"
-   ;:syntax :erudite
    :output-type :latex
    :document-class :book))
+
+(defun make-sphinx ()
+  (erudite:erudite
+   (asdf:system-relative-pathname :erudite "doc/sphinx/index.rst")
+   *files*
+   :output-type :sphinx))

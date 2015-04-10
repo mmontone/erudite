@@ -9,7 +9,9 @@
 	       (:file "commands")
 	       (:module :syntax
 			:components
-			((:file "erudite")))
+			((:file "erudite")
+			 (:file "latex")
+			 (:file "sphinx")))
 	       (:file "erudite"))
   :depends-on (:cl-fad
 	       :cl-ppcre
