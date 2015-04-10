@@ -347,9 +347,11 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
 
 (defmethod write-indexes (indexes output (output-type (eql :latex)))
   (when indexes
-    (format output "\\lstset{~{index={~A}~^,~}}"
-	    (mapcar (alexandria:compose #'escape-latex #'second)
-		    indexes))
+    ; (format output "\\lstset{~{index={~A}~^,~}}"
+    ; 	    (mapcar (alexandria:compose #'escape-latex #'second)
+    ; 		    indexes))
+    (loop for index in (remove-duplicates indexes :key #'second :test #'equalp)
+	 do (format output "\\index{~A}~%" (escape-latex (second index))))
     (terpri output)))
 
 (defun escape-latex (str)
