@@ -18,7 +18,7 @@ Erudite is a Literate Programming System for Common Lisp
 
 ## Quickstart
 
-Run `make` to build erudite command line if you want to run it from there:
+Run `make` to build erudite command line if you want to run it from there, and then `sudo make install` to install.
 
 ```
 Usage: erudite [-hvd] [+vd] [OPTIONS] FILES...
