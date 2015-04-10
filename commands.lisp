@@ -13,6 +13,12 @@
       (error "Invalid command: ~A" command))
     command))
 
+(defun find-matching-command (line)
+  (loop
+     :for command :in *commands*
+     :when (match-command command line)
+     :return command))
+
 ;; @subsection Commands definition
 
 (defmacro define-command (name &body body)

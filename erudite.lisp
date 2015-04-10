@@ -256,6 +256,9 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
 (defgeneric process-fragment (fragment-type fragment output cont))
 
 (defmethod process-fragment ((type (eql :code)) fragment output cont)
+  ;; Extract and output indexes first
+  (let ((indexes (extract-indexes (second fragment))))
+    (write-indexes indexes output *output-type*))
   (write-code (second fragment) output *output-type*)
   (funcall cont))
 
@@ -270,19 +273,12 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
                        (funcall cont :output output))))))
       (%process-fragment))))
 
-(defun find-matching-command (line)
-  (loop
-     :for command :in *commands*
-     :when (match-command command line)
-     :return command))
-
 (defmethod maybe-process-command (line input output cont)
   "Process a top-level command"
   (let ((command (find-matching-command line)))
     (if command
         (process-command command line input output cont)
         (process-doc *syntax* *output-type* line output cont))))
-
 
 (defmethod process-doc ((syntax (eql :latex)) output-type line stream cont)
   (write-string line stream)
@@ -324,6 +320,53 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
   (write-code (format nil "<<~A>>=~%~A" chunk-name chunk)
               stream *output-type*))
 
+(defun parse-definition-type (str)
+  (case (intern (string-upcase str))
+    (defun :function)
+    (defmacro :macro)
+    (defclass :class)
+    (defvar :variable)
+    (defparameter :variable)
+    (defmethod :method)
+    (defgeneric :generic)
+    (otherwise (intern (string-upcase str) :keyword))))
+
+(defun extract-indexes (code)
+  (let ((indexes))
+    (loop
+       :for line :in (split-sequence:split-sequence #\newline code)
+       :do
+       (do-register-groups (definition-type name) 
+	   ("^\\((def\\S*)\\s+([^\\s(]*)" line)
+	 (push (list (parse-definition-type definition-type)
+		     name)
+	       indexes)))
+    indexes))
+
+(defgeneric write-indexes (indexes output output-type))
+
+(defmethod write-indexes (indexes output (output-type (eql :latex)))
+  (when indexes
+    (format output "\\lstset{~{index={~A}~^,~}}"
+	    (mapcar (alexandria:compose #'escape-latex #'second)
+		    indexes))
+    (terpri output)))
+
+(defun escape-latex (str)
+  (let ((escaped str))
+    (flet ((%replace (thing replacement)
+	     (setf escaped (regex-replace-all thing escaped replacement))))
+      (%replace "\\\\" "\\textbackslash")
+      (%replace "\\&" "\\&")
+      (%replace "\\%" "\\%")
+      (%replace "\\$" "\\$")
+      (%replace "\\#" "\\#")
+      (%replace "\\_" "\\_")
+      (%replace "\\{" "\\{")
+      (%replace "\\}" "\\}")
+      (%replace "\\~" "\\textasciitilde")
+      (%replace "\\^" "\\textasciicircum")      
+      escaped)))
 #|
 
 Code blocks in Sphinx are indented. The indent-code function takes care of that:
