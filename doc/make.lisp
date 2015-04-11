@@ -12,29 +12,23 @@
 (defun system-file (filename)
   (asdf:system-relative-pathname :erudite filename))
 
-(defparameter *files* 
-  (mapcar #'system-file 
-	  (list "erudite.lisp"
-		"cli.lisp"
-		"commands.lisp"
-		"syntax/erudite.lisp"
-		"test/test.lisp")))
-
 (defun make-latex ()
   (erudite:erudite
    (asdf:system-relative-pathname :erudite "doc/erudite.tex")
-   *files*
+   (system-file "erudite.lisp")
    :output-type :latex
-   :document-class :book))
+   :document-class :book
+   :debug t
+   :catch-errors-p t))
 
 (defun make-sphinx ()
   (erudite:erudite
    (asdf:system-relative-pathname :erudite "doc/sphinx/index.rst")
-   *files*
+   (system-file "erudite.lisp")
    :output-type :sphinx))
 
 (defun make-markdown ()
   (erudite:erudite
    (asdf:system-relative-pathname :erudite "doc/erudite.md")
-   *files*
+   (system-file "erudite.lisp")
    :output-type :markdown))

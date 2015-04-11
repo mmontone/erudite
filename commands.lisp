@@ -38,6 +38,13 @@
                                ,@process-body))
        (pushnew ',name *commands*))))
 
+(defgeneric match-command (command line))
+
+(defgeneric process-command (command line input output cont))
+
+(defmethod process-command :before (command line input output cont)
+  (log:debug "Processing `~A`" line))  
+
 ;; @subsection Commands list
 
 ;; @subsubsection Input type
@@ -117,7 +124,7 @@
   (:match (line)
     (scan "@extract\\s+(.+)" line))
   (:process (line input output cont)
-            (register-groups-bind (extract-name) ("@extract\\s+(.+)" line)
+	    (register-groups-bind (extract-name) ("@extract\\s+(.+)" line)
               ;; Build and register the extracted piece for later processing
               ;; Redirect the output to the "extract output"
               (let* ((extract-output (make-string-output-stream))
@@ -143,9 +150,6 @@
             (register-groups-bind (extract-name) ("@insert\\s+(.+)" line)
               (format output "__INSERT_EXTRACT__~A~%" extract-name)
 	      (funcall cont))))
-
-;; @bold{Tests}
-;; @insert extract-test
 
 ;; @subsubsection Ignore
 
@@ -188,7 +192,7 @@
   (:match (line)
     (scan "@include-path\\s+(.+)" line))
   (:process (line input output cont)
-            (register-groups-bind (path) ("@include-path\\s+(.+)" line)
+	    (register-groups-bind (path) ("@include-path\\s+(.+)" line)
               (setf *include-path* (pathname path))
               (funcall cont))))
 
@@ -196,7 +200,7 @@
   (:match (line)
     (scan "@include\\s+(.+)" line))
   (:process (line input output cont)
-            (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
+	    (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
               (let ((pathname (cond
                                 ((fad:pathname-absolute-p
                                   (pathname filename-or-path))
@@ -204,8 +208,10 @@
                                 (*include-path*
                                  (merge-pathnames filename-or-path
                                                   *include-path*))
-                                (t (merge-pathnames filename-or-path
-                                                    *current-path*)))))
+                                (*current-path* 
+				 (merge-pathnames filename-or-path
+						  *current-path*))
+				(t (error "No base path for include. This should not have happened")))))
                 ;; Process and output the included file
                 (write-string (process-file-to-string pathname) output)
 		(terpri output)

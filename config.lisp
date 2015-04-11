@@ -8,3 +8,8 @@
 (defvar *author* nil)
 (defvar *current-path* nil)
 (defvar *chunks* nil)
+(defvar *catch-errors-p* t)
+(defvar *verbose* nil)
+(defvar *debug* nil)
+
+(log:config :off)
