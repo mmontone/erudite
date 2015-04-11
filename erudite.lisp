@@ -549,7 +549,7 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                      (file-to-string (or template-pathname
                                          (asdf:system-relative-pathname
                                           :erudite
-                                          "latex/template.tex")))))
+                                          "resource/template.tex")))))
           (body (process-file-to-string files)))
       (write-string
        (funcall template (list :title (or title
