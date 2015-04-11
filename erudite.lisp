@@ -293,7 +293,7 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
   (terpri stream)
   (write-string "```lisp" stream)
   (terpri stream)
-  (write-string (indent-code code) stream)
+  (write-string code stream)
   (write-string "```" stream)
   (terpri stream))
 
