@@ -47,13 +47,13 @@ Multiple passes are run on the input files. This is because we want to be able t
 
 @subsection Includes expansion
 
-In the first pass, @emph{@include} directives are expanded to be able to process the whole thing from a single stream.
+In the first pass, @emph{include} directives are expanded to be able to process the whole thing from a single stream.
 |#
 
 (defvar *include-path* nil)
 
 (defun expand-includes (stream)
-  "Expand @include directives"
+  "Expand include directives"
   (with-output-to-string (output)
     (loop 
       :for line := (read-line stream nil)
@@ -341,7 +341,7 @@ Once the literate code has been parsed and processed, it is time to resolve the 
               (terpri output)))))))
 
 #|
-@subsubsection Conclusion
+@subsection Conclusion
 
 The whole process is invoked from @ref{process-file-to-string} function.
 
