@@ -32,7 +32,7 @@
                                ,@process-body))
        (pushnew ',name *erudite-syntax*))))
 
-;; @subsection Commands list
+;; @subsection Syntax elements
 
 ;; @subsubsection Section
 (define-erudite-syntax section

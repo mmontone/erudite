@@ -80,6 +80,7 @@ In the first pass, @emph{include} directives are expanded to be able to process 
       :do
 	 (cond 
 	   ((scan "@include-path\\s+(.+)" line)
+	    (log:debug "~A" line)
 	    (register-groups-bind (path) ("@include-path\\s+(.+)" line)
               (setf *include-path* (pathname path))))
 	   ((scan "@include\\s+(.+)" line)
@@ -95,8 +96,10 @@ In the first pass, @emph{include} directives are expanded to be able to process 
 				 (merge-pathnames filename-or-path
 						  *current-path*))
 				(t (error "No base path for include. This should not have happened")))))
+		(log:debug "Including ~A" pathname)
 		;; Expand the included file source into output
-		(write-string (file-to-string pathname) output))))
+		(write-string (file-to-string pathname) output)
+		)))
 	   (t
 	    (write-string line output)
 	    (terpri output))))))
@@ -242,11 +245,11 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
   (when (not 
 	 (zerop (length
 		 (remove #\  (remove #\newline (second fragment))))))
-  ;; Extract and output indexes first
-  (let ((indexes (extract-indexes (second fragment))))
-    (write-indexes indexes output *output-type*))
-  (write-code (second fragment) output *output-type*)
-  (funcall cont)))
+    ;; Extract and output indexes first
+    (let ((indexes (extract-indexes (second fragment))))
+      (write-indexes indexes output *output-type*))
+    (write-code (second fragment) output *output-type*))
+  (funcall cont))
 
 (defmethod process-fragment ((type (eql :doc)) fragment output cont)
   (with-input-from-string (input (second fragment))
@@ -515,9 +518,9 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 
 #|
 
-@section Backends
+@section Outputs
 
-@emph{Erudite} supports LaTeX and Sphinx generation at the moment.
+@emph{Erudite} supports LaTeX, Markdown and Sphinx generation at the moment.
 
 @subsection LaTeX
 |#
