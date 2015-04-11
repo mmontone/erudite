@@ -294,6 +294,7 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
   (write-string "```lisp" stream)
   (terpri stream)
   (write-string code stream)
+  (terpri stream)
   (write-string "```" stream)
   (terpri stream))
 

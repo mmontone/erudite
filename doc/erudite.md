@@ -107,6 +107,7 @@ condition CONDITION is signaled in Erudite."
                    file-or-files
                    (list file-or-files))
                args)))))
+
 ```
 
 
@@ -148,7 +149,8 @@ In the first pass, *include* directives are expanded to be able to process the w
                                 (*current-path* 
 				 (merge-pathnames filename-or-path
 						  *current-path*))
-				(t (error "No base path for include. This should not have happened")))))```
+				(t (error "No base path for include. This should not have happened")))))
+```
 Expand the included file source into output
 
 ```lisp
@@ -156,6 +158,7 @@ Expand the included file source into output
 	   (t
 	    (write-string line output)
 	    (terpri output))))))
+
 ```
  
 
@@ -195,6 +198,7 @@ After includes have been expanded, it is time to extract chunks.
 	     (t
 	      (write-string line output)
 	      (terpri output)))))))
+
 ```
 
 Once both includes have been expanded, and chunks have been pre proccessed, the resulting output with literate code is parsed into *fragments*. Fragments can be of type _documentation_ or type _code_. _documentation_ is the text that appears in Common Lisp comments. _code_ fragments are the rest. This is done via the split-file-source function.
@@ -219,23 +223,27 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
 
 (defun parse-long-comment (line stream)
   "Parse a comment between #| and |#"
+
 ```
 TODO: this does not work for long comments in one line
 
 ```lisp
   (when (equalp (search "#|" (string-left-trim (list #\  #\tab) line))
-                0)```
+                0)
+```
 We've found a long comment
 Extract the comment source
 
 ```lisp
     (let ((comment
-            (with-output-to-string (s)```
+            (with-output-to-string (s)
+```
 First, add the first comment line
 
 ```lisp
               (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
-                (write-string comment-line s))```
+                (write-string comment-line s))
+```
 While there are lines without \verb'|#', add them to the comment source
 
 ```lisp
@@ -245,7 +253,8 @@ While there are lines without \verb'|#', add them to the comment source
                 :do
                    (terpri s)
                    (write-string line s)
-                :finally```
+                :finally
+```
 Finally, extract the last comment line
 
 ```lisp
@@ -261,7 +270,8 @@ Finally, extract the last comment line
          (search *short-comments-prefix*
                  (string-left-trim (list #\  #\tab)
                                    line))
-         0)```
+         0)
+```
 A short comment was found
 
 ```lisp
@@ -285,7 +295,8 @@ A short comment was found
     (loop
       :for fragment :in (cdr fragments)
       :do
-         (if (equalp (first fragment) (first current-fragment))```
+         (if (equalp (first fragment) (first current-fragment))
+```
 The fragments are of the same type. Append them
 
 ```lisp
@@ -293,7 +304,8 @@ The fragments are of the same type. Append them
                    (with-output-to-string (s)
                      (write-string (second current-fragment) s)
                      (terpri s)
-                     (write-string (second fragment) s)))```
+                     (write-string (second fragment) s)))
+```
 else, there's a new kind of fragment
 
 ```lisp
@@ -316,7 +328,8 @@ else, there's a new kind of fragment
 (defmethod process-fragment ((type (eql :code)) fragment output cont)
   (when (not 
 	 (zerop (length
-		 (remove #\  (remove #\newline (second fragment))))))```
+		 (remove #\  (remove #\newline (second fragment))))))
+```
 Extract and output indexes first
 
 ```lisp
@@ -390,6 +403,7 @@ Extract and output indexes first
   (write-string "```lisp" stream)
   (terpri stream)
   (write-string code stream)
+  (terpri stream)
   (write-string "```" stream)
   (terpri stream))
 
@@ -401,6 +415,7 @@ Extract and output indexes first
 (defmethod write-chunk (chunk-name chunk stream)
   (write-code (format nil "<<~A>>=~%~A" chunk-name chunk)
               stream *output-type*))
+
 ```
 
 
@@ -425,7 +440,8 @@ Once the literate code has been parsed and processed, it is time to resolve the 
            (cond
              ((scan "^__INSERT_CHUNK__(.*)$" line)
               (register-groups-bind (chunk-name)
-                  ("^__INSERT_CHUNK__(.*)$" line)```
+                  ("^__INSERT_CHUNK__(.*)$" line)
+```
 Insert the chunk
 
 ```lisp
@@ -435,7 +451,8 @@ Insert the chunk
                                output))))
              ((scan "^__INSERT_EXTRACT__(.*)$" line)
               (register-groups-bind (extract-name)
-                  ("^__INSERT_EXTRACT__(.*)$" line)```
+                  ("^__INSERT_EXTRACT__(.*)$" line)
+```
 Insert the extract
 
 ```lisp
@@ -445,6 +462,7 @@ Insert the extract
              (t
               (write-string line output)
               (terpri output)))))))
+
 ```
 
 
@@ -500,6 +518,7 @@ The whole process is invoked from process-file-to-string function.
            (extract-chunks 
 	    (expand-includes f)))
           s))))))
+
 ```
 
 
@@ -545,13 +564,15 @@ The whole process is invoked from process-file-to-string function.
              (format output "\\label{~A}~%" (latex-label (second index))))
     (terpri output)))
 
-(defmethod write-indexes (indexes output (output-type (eql :sphinx)))```
+(defmethod write-indexes (indexes output (output-type (eql :sphinx)))
+```
 TODO: implement
 
 ```lisp
   )
 
-(defmethod write-indexes (indexes output (output-type (eql :markdown)))```
+(defmethod write-indexes (indexes output (output-type (eql :markdown)))
+```
 TODO: implement
 
 ```lisp
@@ -587,7 +608,8 @@ TODO: implement
       (%replace "\\}" "=")
       (%replace "\\~" "=")
       (%replace "\\^" "=")
-      escaped)))```
+      escaped)))
+```
 
 
 Code blocks in Sphinx are indented. The indent-code function takes care of that:
@@ -602,6 +624,7 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
            (mapcar (lambda (line)
                      (format nil "     ~A~%" line))
                    lines))))
+
 ```
 
 
@@ -654,7 +677,8 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                                            (error "No document author specified"))
                                :body body))
        output))
-    t))```
+    t))
+```
 
 
 
@@ -684,6 +708,7 @@ Sphinx is the other kind of output apart from LaTeX.
                       (file-to-string postlude)
                       postlude)
                   output)))
+
 ```
 
 
@@ -714,4 +739,5 @@ Markdown is another output type.
                       (file-to-string postlude)
                       postlude)
                   output)))
+
 ```
