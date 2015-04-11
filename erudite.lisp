@@ -283,10 +283,11 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
 
 (defmethod write-code (code stream (output-type (eql :sphinx)))
   (terpri stream)
-  (write-string "..code-block:: common-lisp" stream)
+  (write-string ".. code-block:: common-lisp" stream)
   (terpri stream)
   (terpri stream)
   (write-string (indent-code code) stream)
+  (terpri stream)
   (terpri stream))
 
 (defmethod write-code (code stream (output-type (eql :markdown)))

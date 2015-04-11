@@ -78,6 +78,7 @@
 			   (selector (eql :end-code))
 			   stream
 			   syntax)
+  (terpri stream)
   (setf *sphinx-indent* nil))
 
 (defmethod %format-syntax ((output-type (eql :sphinx))
