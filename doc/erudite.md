@@ -27,6 +27,31 @@ Some of its salient features are:
 
 
 
+# Other systems
+
+
+
+## LP/Lisp
+
+
+[LP/Lisp](http://mainesail.umcs.maine.edu/software/LPLisp) is an LP system for CL by Roy M. Turner. *Erudite* shares several of its design decisions with it.
+
+Contrary to traditional LP systems, but like *Erudite* extracts text from CL comments. That makes it possible to work with the lisp program interactively; there's no tangling needed.
+
+But unlike *Erudite*:
+
+*  It is not portable. It runs on Allegro Common Lisp only.
+*  It is tightly bound to Latex, but in its input and its output.
+*  It is not very easily extensible in its current version (an extensible OO model is planned for its version 2).
+
+
+
+## CLWEB
+
+
+[CLWEB](http://www.cs.brandeis.edu/~plotnick/clweb) is a more traditional LP system for Common Lisp. It is not possible to work with the Lisp program in interpreter mode, as it requires previous code tangling.
+
+
 
 # Invocation
 
@@ -135,6 +160,7 @@ In the first pass, *include* directives are expanded to be able to process the w
       :do
 	 (cond 
 	   ((scan "@include-path\\s+(.+)" line)
+	    (log:debug "~A" line)
 	    (register-groups-bind (path) ("@include-path\\s+(.+)" line)
               (setf *include-path* (pathname path))))
 	   ((scan "@include\\s+(.+)" line)
@@ -150,11 +176,13 @@ In the first pass, *include* directives are expanded to be able to process the w
 				 (merge-pathnames filename-or-path
 						  *current-path*))
 				(t (error "No base path for include. This should not have happened")))))
+		(log:debug "Including ~A" pathname)
 ```
 Expand the included file source into output
 
 ```lisp
-		(write-string (file-to-string pathname) output))))
+		(write-string (file-to-string pathname) output)
+		)))
 	   (t
 	    (write-string line output)
 	    (terpri output))))))
@@ -333,10 +361,10 @@ else, there's a new kind of fragment
 Extract and output indexes first
 
 ```lisp
-  (let ((indexes (extract-indexes (second fragment))))
-    (write-indexes indexes output *output-type*))
-  (write-code (second fragment) output *output-type*)
-  (funcall cont)))
+    (let ((indexes (extract-indexes (second fragment))))
+      (write-indexes indexes output *output-type*))
+    (write-code (second fragment) output *output-type*))
+  (funcall cont))
 
 (defmethod process-fragment ((type (eql :doc)) fragment output cont)
   (with-input-from-string (input (second fragment))
@@ -392,10 +420,11 @@ Extract and output indexes first
 
 (defmethod write-code (code stream (output-type (eql :sphinx)))
   (terpri stream)
-  (write-string "..code-block:: common-lisp" stream)
+  (write-string ".. code-block:: common-lisp" stream)
   (terpri stream)
   (terpri stream)
   (write-string (indent-code code) stream)
+  (terpri stream)
   (terpri stream))
 
 (defmethod write-code (code stream (output-type (eql :markdown)))
@@ -629,10 +658,10 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 
 
 
-# Backends
+# Outputs
 
 
-*Erudite* supports LaTeX and Sphinx generation at the moment.
+*Erudite* supports LaTeX, Markdown and Sphinx generation at the moment.
 
 
 ## LaTeX
@@ -739,5 +768,707 @@ Markdown is another output type.
                       (file-to-string postlude)
                       postlude)
                   output)))
+
+```
+
+# Command line interface
+
+
+It is possible to invoke *Erudite* from the command line
+ 
+Run `make` to build `erudite` executable.
+
+This is the command line syntax:
+
+```
+Usage: erudite [-hvd] [+vd] [OPTIONS] FILES...
+
+Erudite is a Literate Programming System for Common Lisp
+  -h, --help                  Print this help and exit.
+  --version                   Print Erudite version
+  -(+)v, --verbose[=yes/no]   Run in verbose mode
+                              Fallback: yes
+                              Environment: VERBOSE
+  -(+)d, --debug[=on/off]     Turn debugging on or off.
+                              Fallback: on
+                              Environment: DEBUG
+  -o, --output=OUTPUT         The output file. If none is used, result is 
+                              printed to stdout
+  --output-type=OUTPUT-TYPE   The output type. One of 'latex', 'sphinx'
+                              Default: latex
+  --syntax=SYNTAX             The syntax used in source files. One of 'latex', 
+                              'sphinx', 'erudite'
+                              Default: erudite
+  --author=AUTHOR             The author to appear in the document
+  --title=TITLE               The document title
+```
+
+Then run `sudo make install` to install globally in your system
+
+Here is an example usage:
+```
+erudite -o erudite.tex erudite.lisp
+```
+
+
+## Implementation
+
+
+The command line is implemented via the *com.dvl.clon* library.
+
+```lisp
+
+(ql:quickload :com.dvlsoft.clon)
+(ql:quickload :erudite)
+
+(defpackage erudite.cli
+  (:use :cl :erudite))
+
+(eval-when (:execute :load-toplevel :compile-toplevel)
+  (com.dvlsoft.clon:nickname-package))
+
+(clon:defsynopsis (:postfix "FILES...")
+  (text :contents (format nil "Erudite is a Literate Programming System for Common Lisp"))
+  (flag :short-name "h" :long-name "help"
+        :description "Print this help and exit.")
+  (flag :long-name "version"
+        :description "Print Erudite version")
+  (switch :short-name "v" :long-name "verbose"
+          :description "Run in verbose mode"
+          :env-var "VERBOSE")
+  (switch :short-name "d" :long-name "debug"
+          :description "Turn debugging on or off."
+          :argument-style :on/off
+          :env-var "DEBUG")
+  (path :long-name "output"
+        :short-name "o"
+	:argument-name "OUTPUT"
+	:type :file
+	:description "The output file. If none is used, result is printed to stdout")
+  (enum :long-name "output-type"
+	:argument-name "OUTPUT-TYPE"
+	:enum (list :latex :sphinx)
+	:default-value :latex
+	:description "The output type. One of 'latex', 'sphinx'")
+  (enum :long-name "syntax"
+	:argument-name "SYNTAX"
+	:enum (list :erudite :latex :sphinx)
+	:default-value :erudite
+	:description "The syntax used in source files. One of 'latex', 'sphinx', 'erudite'")
+  (stropt :long-name "author"
+          :argument-name "AUTHOR"
+	  :description "The author to appear in the document")
+  (stropt :long-name "title"
+          :argument-name "TITLE"
+	  :description "The document title"))
+
+(defun stringp* (str)
+  (and (stringp str)
+       (not (equalp str ""))
+       str))
+
+(defun main ()
+  (clon:make-context)
+  (cond 
+    ((or (clon:getopt :short-name "h")
+	 (not (clon:cmdline-p)))
+     (clon:help))
+    ((clon:getopt :long-name "version")
+     (print "Erudite Literate Programming System for Common Lisp version 0.0.1"))
+    (t
+     (let ((title (stringp* (clon:getopt :long-name "title")))
+	   (author (stringp* (clon:getopt :long-name "author")))
+	   (output-type (clon:getopt :long-name "output-type"))
+	   (syntax (clon:getopt :long-name "syntax"))
+	   (output (or (clon:getopt :long-name "output")
+		       t))
+	   (files (mapcar #'pathname (clon:remainder))))
+       (erudite:erudite output files 
+			:title title
+			:author author
+			:output-type output-type
+			:syntax syntax)))))
+
+(clon:dump "erudite" main)
+```
+
+# Commands
+
+Commands are held in *commands* list
+
+```lisp
+(defvar *commands* nil)
+
+(defun find-command (name &optional (error-p t))
+  (let ((command (gethash name *commands*)))
+    (when (and error-p (not command))
+      (error "Invalid command: ~A" command))
+    command))
+
+(defun find-matching-command (line)
+  (loop
+     :for command :in *commands*
+     :when (match-command command line)
+     :return command))
+
+```
+
+## Commands definition
+
+
+```lisp
+
+(defmacro define-command (name &body body)
+  (let ((match-function-def (or (find :match body :key #'car)
+                                (error "Specify a match function")))
+        (process-function-def (or (find :process body :key #'car)
+                                  (error "Specify a process function"))))
+    `(progn
+       ,(destructuring-bind (_ match-args &body match-body) match-function-def
+                            `(defmethod match-command ((command (eql ',name))
+                                                       ,@match-args)
+                               ,@match-body))
+       ,(destructuring-bind (_ process-args &body process-body)
+                            process-function-def
+                            `(defmethod process-command ((command (eql ',name))
+                                                         ,@process-args)
+                               ,@process-body))
+       (pushnew ',name *commands*))))
+
+(defgeneric match-command (command line))
+
+(defgeneric process-command (command line input output cont))
+
+(defmethod process-command :before (command line input output cont)
+  (log:debug "Processing `~A`" line))  
+
+```
+
+## Commands list
+
+
+### Input type
+
+
+```lisp
+
+(define-command syntax
+  (:match (line)
+    (scan "@syntax\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (syntax) ("@syntax\\s+(.+)" line)
+              (setf *syntax* (intern (string-upcase syntax) :keyword)))
+            (funcall cont)))
+
+```
+
+### Output type
+
+
+```lisp
+(define-command output-type
+  (:match (line)
+    (scan "@output-type\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (output-type) ("@output-type\\s+(.+)" line)
+              (setf *output-type* (intern (string-upcase output-type) :keyword)))
+            (funcall cont)))
+
+```
+
+### Title
+
+
+```lisp
+
+(define-command title
+  (:match (line)
+    (scan "@title\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (title) ("@title\\s+(.+)" line)
+              (setf *title* title))
+            (funcall cont)))
+
+```
+
+### Subtitle
+
+
+```lisp
+
+(define-command subtitle
+  (:match (line)
+    (scan "@subtitle\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (subtitle) ("@subtitle\\s+(.+)" line)
+              (setf *subtitle* subtitle))
+            (funcall cont)))
+
+```
+
+### Author
+
+
+```lisp
+
+(define-command author
+  (:match (line)
+    (scan "@author\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (author) ("@author\\s+(.+)" line)
+              (setf *author* author))
+            (funcall cont)))
+
+```
+
+### Chunks
+
+
+```lisp
+
+(defun find-chunk (chunk-name &key (error-p t))
+  (or (assoc chunk-name *chunks* :test #'equalp)
+      (error "Chunk not defined: ~A" chunk-name)))
+
+(define-command insert-chunk
+  (:match (line)
+    (scan "@insert-chunk\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (chunk-name) ("@insert-chunk\\s+(.+)" line)
+	      (format output "__INSERT_CHUNK__~A~%" chunk-name)
+	      (funcall cont))))
+
+```
+
+### Extraction
+
+
+```lisp
+
+(defvar *extracts* nil)
+(defvar *current-extract* nil)
+
+(defun find-extract (extract-name &key (error-p t))
+  (or (assoc extract-name *extracts* :test #'equalp)
+      (and error-p
+           (error "No text extracted with name: ~A" extract-name))))
+
+(define-command extract
+  (:match (line)
+    (scan "@extract\\s+(.+)" line))
+  (:process (line input output cont)
+	    (register-groups-bind (extract-name) ("@extract\\s+(.+)" line)
+```
+Build and register the extracted piece for later processing
+Redirect the output to the "extract output"
+
+```lisp
+              (let* ((extract-output (make-string-output-stream))
+		     (*current-extract* (list :name extract-name
+                                               :output extract-output
+                                               :original-output output)))
+                  (funcall cont :output extract-output)))))
+
+(define-command end-extract
+  (:match (line)
+    (scan "@end extract" line))
+  (:process (line input output cont)
+            (push (cons (getf *current-extract* :name)
+                        (getf *current-extract* :output))
+                  *extracts*)
+```
+Restore the output
+
+```lisp
+            (funcall cont :output (getf *current-extract* :original-output))))
+
+(define-command insert
+  (:match (line)
+    (scan "@insert\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (extract-name) ("@insert\\s+(.+)" line)
+              (format output "__INSERT_EXTRACT__~A~%" extract-name)
+	      (funcall cont))))
+
+```
+
+### Ignore
+
+
+```lisp
+
+(defvar *ignore* nil)
+
+(define-command ignore
+  (:match (line)
+    (scan "@ignore" line))
+  (:process (line input output cont)
+            (setf *ignore* t)
+            (funcall cont)))
+
+(define-command end-ignore
+  (:match (line)
+    (scan "@end ignore" line))
+  (:process (line input output cont)
+            (setf *ignore* nil)
+            (funcall cont)))
+
+(defmethod process-doc :around (syntax output-type line stream cont)
+  (if *ignore*
+      (funcall cont)
+      (call-next-method)))
+
+(defmethod process-fragment :around ((type (eql :code)) fragment output cont)
+  (if *ignore*
+      (funcall cont)
+      (call-next-method)))
+
+(defmethod maybe-process-command :around (line input output cont)
+  (if (and *ignore* (not (match-command 'end-ignore line)))
+      (funcall cont)
+      (call-next-method)))
+```
+
+# Erudite syntax
+
+Erudite formatting operations are held in *erudite-syntax* list
+
+```lisp
+(defvar *erudite-syntax* nil)
+
+(defun find-syntax (name &optional (error-p t))
+  (let ((command (gethash name *erudite-syntax*)))
+    (when (and error-p (not command))
+      (error "Invalid syntax: ~A" command))
+    command))
+
+```
+
+## Syntax definition
+
+
+```lisp
+
+(defmacro define-erudite-syntax (name &body body)
+  (let ((match-function-def (or (find :match body :key #'car)
+                                (error "Specify a match function")))
+        (process-function-def (or (find :process body :key #'car)
+                                  (error "Specify a process function"))))
+    `(progn
+       ,(destructuring-bind (_ match-args &body match-body) match-function-def
+                            `(defmethod match-syntax ((command (eql ',name))
+						      ,@match-args)
+                               ,@match-body))
+       ,(destructuring-bind (_ process-args &body process-body)
+                            process-function-def
+                            `(defmethod process-syntax ((command (eql ',name))
+							,@process-args)
+                               ,@process-body))
+       (pushnew ',name *erudite-syntax*))))
+
+```
+
+## Syntax elements
+
+
+### Section
+
+
+```lisp
+(define-erudite-syntax section
+  (:match (line)
+    (scan "@section" line))
+  (:process (line output output-type)
+	    (register-groups-bind (title) 
+		("@section\\s+(.+)" line)
+	      (format-syntax output (list :section title)))
+	    nil))
+
+```
+
+### Subsection
+
+
+```lisp
+(define-erudite-syntax subsection
+  (:match (line)
+    (scan "@subsection" line))
+  (:process (line output output-type)
+	    (register-groups-bind (title) 
+		("@subsection\\s+(.+)" line)
+	      (format-syntax output (list :subsection title)))
+	    nil))
+
+```
+
+### Subsubsection
+
+
+```lisp
+(define-erudite-syntax subsubsection
+  (:match (line)
+    (scan "@subsubsection" line))
+  (:process (line output output-type)
+	    (register-groups-bind (title) 
+		("@subsubsection\\s+(.+)" line)
+	      (format-syntax output (list :subsubsection title)))
+	    nil))
+
+```
+
+### Verbatim
+
+
+```lisp
+(define-erudite-syntax begin-verbatim
+  (:match (line)
+    (scan "@verbatim" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :begin-verbatim))
+	    nil))
+
+(define-erudite-syntax end-verbatim
+  (:match (line)
+    (scan "@end verbatim" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :end-verbatim))
+	    nil))
+
+```
+
+### Code
+
+
+```lisp
+(define-erudite-syntax begin-code
+  (:match (line)
+    (scan "@code" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :begin-code))
+	    nil))
+
+(define-erudite-syntax end-code
+  (:match (line)
+    (scan "@end code" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :end-code))
+	    nil))
+
+```
+
+### Lists
+
+
+```lisp
+(define-erudite-syntax begin-list
+  (:match (line)
+    (scan "@list" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :begin-list))
+	    nil))
+
+(define-erudite-syntax end-list
+  (:match (line)
+    (scan "@end list" line))
+  (:process (line output output-type)
+	    (format-syntax output (list :end-list))
+	    nil))
+
+(define-erudite-syntax list-item
+  (:match (line)
+    (scan "@item" line))
+  (:process (line output output-type)
+	    (regex-replace "@item" line
+			   (lambda (match)
+			     (format-syntax nil (list :list-item)))
+			   :simple-calls t)))
+
+```
+
+### Emphasis
+
+
+```lisp
+(define-erudite-syntax emphasis
+  (:match (line)
+    (scan "@emph{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@emph{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :emph text)))
+			       :simple-calls t)))
+
+```
+
+### Bold
+
+
+```lisp
+(define-erudite-syntax bold
+  (:match (line)
+    (scan "@bold{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@bold{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :bold text)))
+			       :simple-calls t)))
+
+```
+
+### Italics
+
+
+```lisp
+(define-erudite-syntax italics
+  (:match (line)
+    (scan "@it{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@it{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :italics text)))
+			       :simple-calls t)))
+
+```
+
+### Inline verbatim
+
+
+```lisp
+(define-erudite-syntax inline-verbatim
+  (:match (line)
+    (scan "@verb{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@verb{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :inline-verbatim text)))
+			       :simple-calls t)))
+
+```
+
+### Link
+
+
+```lisp
+(define-erudite-syntax link
+  (:match (line)
+    (scan "@link{(.*?)}{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@link{(.*?)}{(.*?)}" line
+			       (lambda (match target label)
+				 (format-syntax nil (list :link target label)))
+			       :simple-calls t)))
+
+```
+
+### Label
+
+
+```lisp
+(define-erudite-syntax label
+  (:match (line)
+    (scan "@label{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@label{(.*?)}" line
+			       (lambda (match label)
+				 (format-syntax nil (list :label label)))
+			       :simple-calls t)))
+
+```
+
+### Index
+
+
+```lisp
+(define-erudite-syntax index
+  (:match (line)
+    (scan "@index{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@index{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :index text)))
+			       :simple-calls t)))
+
+```
+
+### Reference
+
+
+```lisp
+(define-erudite-syntax reference
+  (:match (line)
+    (scan "@ref{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@ref{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :ref text)))
+			       :simple-calls t)))
+
+```
+
+## Syntax formatting
+
+
+```lisp
+
+(defvar *latex-document-class* :article)
+
+(defun format-syntax (destination syntax)
+  (if (null destination)
+      (with-output-to-string (stream)
+	(%format-syntax *output-type* (first syntax) stream  syntax))
+      (%format-syntax *output-type* (first syntax) destination syntax)))
+```
+
+# Tests
+
+
+```lisp
+
+(defpackage erudite.test
+  (:use :cl :fiveam :erudite)
+  (:export :run-tests))
+
+(in-package :erudite.test)
+
+```
+Tests are run with run-tests
+
+```lisp
+
+(defun run-tests ()
+  (run! 'erudite-tests))
+
+(def-suite erudite-tests)
+
+(in-suite erudite-tests)
+
+```
+
+```lisp
+
+(defun test-file (filename)
+  (merge-pathnames filename
+                   (asdf:system-relative-pathname :erudite "test/")))
+
+(test basic-processing-test
+  (is
+   (equalp
+    (erudite::process-string ";; Hello
+(print \"world\")")
+    "Hello
+\\begin{code}
+(print \"world\")
+\\end{code}
+"))
+  (is
+   (equalp
+    (erudite::process-string "#| Hello
+|#
+(print \"world\")")
+    "Hello
+\\begin{code}
+(print \"world\")
+\\end{code}
+")))
 
 ```
