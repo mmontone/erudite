@@ -100,7 +100,26 @@
   (format stream "_~A_" (second syntax)))
 
 (defmethod %format-syntax ((output-type (eql :markdown))
+			   (selector (eql :link))
+			   stream
+			   syntax)
+  (destructuring-bind (_ target label) syntax
+    (format stream "[~A](~A)" label target)))
+
+(defmethod %format-syntax ((output-type (eql :markdown))
+			   (selector (eql :label))
+			   stream
+			   syntax))
+
+(defmethod %format-syntax ((output-type (eql :markdown))
 			   (selector (eql :ref))
 			   stream
 			   syntax)
   (format stream "~A" (second syntax)))
+
+(defmethod %format-syntax ((output-type (eql :markdown))
+			   (selector (eql :index))
+			   stream
+			   syntax))
+
+

@@ -93,6 +93,22 @@
 			   syntax)
   (format stream "\\textit{~A}" (second syntax)))
 
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :link))
+			   stream
+			   syntax)
+  (destructuring-bind (_ target label) syntax
+    (format stream "\\href{~A}{~A}"
+	    target label)))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :label))
+			   stream
+			   syntax)
+  (format stream "\\label{~A}"
+	  (latex-label (second syntax))))
+
 (defmethod %format-syntax ((output-type (eql :latex))
 			   (selector (eql :ref))
 			   stream
@@ -100,3 +116,10 @@
   (format stream "\\hyperref[~A]{~A}"
 	  (escape-latex (second syntax))
 	  (latex-label (second syntax))))
+
+(defmethod %format-syntax ((output-type (eql :latex))
+			   (selector (eql :index))
+			   stream
+			   syntax)
+  (format stream "\\index{~A}"
+	  (escape-latex (second syntax))))

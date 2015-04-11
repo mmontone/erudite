@@ -116,7 +116,25 @@
   (format stream "*~A*" (second syntax)))
 
 (defmethod %format-syntax ((output-type (eql :sphinx))
+			   (selector (eql :link))
+			   stream
+			   syntax)
+  (destructuring-bind (_ target label) syntax
+    (format stream "`~A <~A>`_" label target)))
+
+(defmethod %format-syntax ((output-type (eql :sphinx))
+			   (selector (eql :label))
+			   stream
+			   syntax)
+  (format stream ".. _~A:" (second syntax)))
+
+(defmethod %format-syntax ((output-type (eql :sphinx))
 			   (selector (eql :ref))
 			   stream
 			   syntax)
   (format stream ":ref:`~A`" (second syntax)))
+
+(defmethod %format-syntax ((output-type (eql :sphinx))
+			   (selector (eql :index))
+			   stream
+			   syntax))

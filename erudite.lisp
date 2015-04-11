@@ -28,6 +28,25 @@ Some of its salient features are:
 
 @end list
 
+@section Other systems
+
+@subsection LP/Lisp
+
+@link{http://mainesail.umcs.maine.edu/software/LPLisp}{LP/Lisp} is an LP system for CL by Roy M. Turner. @emph{Erudite} shares several of its design decisions with it.
+
+Contrary to traditional LP systems, but like @emph{Erudite} extracts text from CL comments. That makes it possible to work with the lisp program interactively; there's no tangling needed.
+
+But unlike @emph{Erudite}:
+@list
+@item It is not portable. It runs on Allegro Common Lisp only.
+@item It is tightly bound to Latex, but in its input and its output.
+@item It is not very easily extensible in its current version (an extensible OO model is planned for its version 2).
+@end list
+
+@subsection CLWEB
+
+@link{http://www.cs.brandeis.edu/~plotnick/clweb}{CLWEB} is a more traditional LP system for Common Lisp. It is not possible to work with the Lisp program in interpreter mode, as it requires previous code tangling.
+
 @ignore
 |#
 (in-package #:erudite)

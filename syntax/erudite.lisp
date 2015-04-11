@@ -158,6 +158,36 @@
 				 (format-syntax nil (list :inline-verbatim text)))
 			       :simple-calls t)))
 
+;; @subsubsection Link
+(define-erudite-syntax link
+  (:match (line)
+    (scan "@link{(.*?)}{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@link{(.*?)}{(.*?)}" line
+			       (lambda (match target label)
+				 (format-syntax nil (list :link target label)))
+			       :simple-calls t)))
+
+;; @subsubsection Label
+(define-erudite-syntax label
+  (:match (line)
+    (scan "@label{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@label{(.*?)}" line
+			       (lambda (match label)
+				 (format-syntax nil (list :label label)))
+			       :simple-calls t)))
+
+;; @subsubsection Index
+(define-erudite-syntax index
+  (:match (line)
+    (scan "@index{(.*?)}" line))
+  (:process (line output output-type)
+	    (regex-replace-all "@index{(.*?)}" line
+			       (lambda (match text)
+				 (format-syntax nil (list :index text)))
+			       :simple-calls t)))
+
 ;; @subsubsection Reference
 (define-erudite-syntax reference
   (:match (line)
