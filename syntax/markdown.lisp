@@ -79,7 +79,7 @@
 			   (selector (eql :list-item))
 			   stream
 			   syntax)
-  (format stream "* ~A" (second syntax)))
+  (format stream "* "))
 
 (defmethod %format-syntax ((output-type (eql :markdown))
 			   (selector (eql :emph))

@@ -220,11 +220,14 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
 (defgeneric process-fragment (fragment-type fragment output cont))
 
 (defmethod process-fragment ((type (eql :code)) fragment output cont)
+  (when (not 
+	 (zerop (length
+		 (remove #\  (remove #\newline (second fragment))))))
   ;; Extract and output indexes first
   (let ((indexes (extract-indexes (second fragment))))
     (write-indexes indexes output *output-type*))
   (write-code (second fragment) output *output-type*)
-  (funcall cont))
+  (funcall cont)))
 
 (defmethod process-fragment ((type (eql :doc)) fragment output cont)
   (with-input-from-string (input (second fragment))

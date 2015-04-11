@@ -12,17 +12,17 @@ Some of its salient features are:
 
 
 
-* NIL Documentation is written in Common Lisp comments. This is very useful because you can work with your program as if it were not a literate program: you can load it, work from SLIME, etc, directly.
+*  Documentation is written in Common Lisp comments. This is very useful because you can work with your program as if it were not a literate program: you can load it, work from SLIME, etc, directly.
 
-* NIL Multiple syntaxes. Multiple type of literate syntax are supported. It is possible to choose from the default Erudite syntax, or use plain Latex or Sphinx syntax, and potentially others.
+*  Multiple syntaxes. Multiple type of literate syntax are supported. It is possible to choose from the default Erudite syntax, or use plain Latex or Sphinx syntax, and potentially others.
 
-* NIL Multiple outputs. Like Latex, Sphinx, Markdown, HTML, etc.
+*  Multiple outputs. Like Latex, Sphinx, Markdown, HTML, etc.
 
-* NIL Automatic indexing and cross-references.
+*  Automatic indexing and cross-references.
 
-* NIL A command line interface.
+*  A command line interface.
 
-* NIL It is portable. You can compile and use in several CL systems.
+*  It is portable. You can compile and use in several CL systems.
 
 
 
@@ -37,14 +37,14 @@ Erudite is invoked calling erudite function.
 ```lisp
      
      (defun call-with-destination (destination function)
-       (cond 
+       (cond
          ((null destination)
           (with-output-to-string (output)
             (funcall function output)))
          ((pathnamep destination)
           (with-open-file (f destination :direction :output
-                          :if-exists :supersede
-                          :if-does-not-exist :create)
+                                         :if-exists :supersede
+                                         :if-does-not-exist :create)
             (funcall function f)))
          ((streamp destination)
           (funcall function destination))
@@ -52,13 +52,33 @@ Erudite is invoked calling erudite function.
           (funcall function *standard-output*))
          (t (error "Invalid destination: ~A" destination))))
      
+     (defun maybe-invoke-debugger (condition)
+       "This function is called whenever a
+     condition CONDITION is signaled in Erudite."
+       (if (not *catch-errors-p*)
+           (invoke-debugger condition)
+           (format t "ERROR: ~A~%" condition)))
+     
+     (defun call-with-error-handling (catch-errors-p function)
+       (setf *catch-errors-p* catch-errors-p)
+       (handler-bind
+           ((error #'maybe-invoke-debugger))
+         (funcall function)))
+     
      (defmacro with-destination ((var destination) &body body)
        `(call-with-destination ,destination
-     			  (lambda (,var) ,@body)))
+                               (lambda (,var) ,@body)))
+     
+     (defmacro with-error-handling ((&optional (catch-errors-p 't))  &body body)
+       `(call-with-error-handling ,catch-errors-p (lambda () ,@body)))
      
      (defun erudite (destination file-or-files
-                     &rest args &key (output-type *output-type*)
+                     &rest args &key 
+     			     (output-type *output-type*)
                                   (syntax *syntax*)
+     			     debug
+     			     verbose
+     			     (catch-errors-p t)
                                   &allow-other-keys)
        "Processes literate lisp files and creates a document.
      
@@ -71,207 +91,117 @@ Erudite is invoked calling erudite function.
               - syntax: The kind of syntax used in the literate source files.
                             One of: :erudite, :latex, :sphinx.
                             Default: :erudite"
-       (with-destination (output destination)
-         (let ((*output-type* output-type)
-     	  (*syntax* syntax))
-           (apply #'gen-doc output-type
-     	     output
-     	     (if (listp file-or-files)
-     		 file-or-files
-     		 (list file-or-files))
-     	     args))))
+       (with-error-handling (catch-errors-p)
+         (with-destination (output destination)
+           (let ((*output-type* output-type)
+                 (*syntax* syntax)
+     	    (*debug* debug)
+     	    (*verbose* verbose))
+     	(when *verbose*
+     	  (log:config :info))
+     	(when *debug*
+     	  (log:config :debug))  
+             (apply #'gen-doc output-type
+                    output
+                    (if (listp file-or-files)
+                        file-or-files
+                        (list file-or-files))
+                    args)))))
      
 ```
 
 
-# Implementation
+# Algorithm
 
 
-First, files with literate code are parsed into *fragments*. Fragments can be of type _documentation_ or type _code_. _documentation_ is the text that appears in Common Lisp comments. _code_ fragments are the rest.
+Multiple passes are run on the input files. This is because we want to be able to invoke chunks and extracts from file to file, from top to down and down to top. In a word, from everywhere without restrictions. 
+
+
+## Includes expansion
+
+
+In the first pass, *include* directives are expanded to be able to process the whole thing from a single stream.
 
 ```lisp
      
-     (defmethod process-file-to-string ((pathname pathname))
-       (let ((*current-path* (fad:pathname-directory-pathname pathname)))
-         (with-open-file (f pathname)
-           (post-process-output
-            (with-output-to-string (s)
-              (process-fragments
-               (split-file-source
-                (extract-chunks f))
-               s))))))
+     (defvar *include-path* nil)
      
-     (defmethod process-file-to-string ((files cons))
-       (post-process-output
-        (with-output-to-string (s)
-          (process-fragments
-           (loop
-              :for file :in files
-              :appending (let ((*current-path* (fad:pathname-directory-pathname file)))
-                           (with-open-file (f file)
-                             (split-file-source
-                              (extract-chunks f)))))
-           s))))
-     
-     (defmethod process-file-to-string :before (pathname)
-       (setf *chunks* nil
-             *extracts* nil))
-     
-     (defmethod process-file-to-string :after (pathname)
-       (setf *chunks* nil
-             *extracts* nil))
-     
-     (defun process-string (string)
-       (let ((*chunks* nil)
-             (*extracts* nil))
-         (post-process-output
-          (with-input-from-string (f string)
-            (with-output-to-string (s)
-              (process-fragments
-               (split-file-source
-                (extract-chunks f))
-               s))))))
-     
-     (defun post-process-output (str)
-       "Resolve chunk inserts and extract inserts after processing"
-     
+     (defun expand-includes (stream)
+       "Expand include directives"
        (with-output-to-string (output)
-         (with-input-from-string (s str)
-           (loop
-              :for line := (read-line s nil)
-              :while line
-              :do
-              (cond
-                ((scan "^__INSERT_CHUNK__(.*)$" line)
-                 (register-groups-bind (chunk-name)
-                     ("^__INSERT_CHUNK__(.*)$" line)
+         (loop 
+           :for line := (read-line stream nil)
+           :while line
+           :do
+     	 (cond 
+     	   ((scan "@include-path\\s+(.+)" line)
+     	    (register-groups-bind (path) ("@include-path\\s+(.+)" line)
+                   (setf *include-path* (pathname path))))
+     	   ((scan "@include\\s+(.+)" line)
+     	    (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
+                   (let ((pathname (cond
+                                     ((fad:pathname-absolute-p
+                                       (pathname filename-or-path))
+                                      filename-or-path)
+                                     (*include-path*
+                                      (merge-pathnames filename-or-path
+                                                       *include-path*))
+                                     (*current-path* 
+     				 (merge-pathnames filename-or-path
+     						  *current-path*))
+     				(t (error "No base path for include. This should not have happened")))))
 ```
-Insert the chunk
+Expand the included file source into output
 
 ```lisp
-                   (let ((chunk (find-chunk chunk-name)))
-                     (write-chunk chunk-name
-                                  (get-output-stream-string (cdr chunk))
-                                  output))))
-                ((scan "^__INSERT_EXTRACT__(.*)$" line)
-                 (register-groups-bind (extract-name)
-                     ("^__INSERT_EXTRACT__(.*)$" line)
-```
-Insert the extract
-
-```lisp
-                   (let ((extract (find-extract extract-name)))
-                     (write-string (get-output-stream-string (cdr extract))
-                                   output))))
-                (t
-                 (write-string line output)
-                 (terpri output)))))))
+     		(write-string (file-to-string pathname) output))))
+     	   (t
+     	    (write-string line output)
+     	    (terpri output))))))
      
 ```
-The parser works like a custom look-ahead parser, with a whole file line
-being the slice looked ahead. And is implemented in Continuation Passing Style.
+ 
 
 ## Chunks extraction
 
 
-```lisp
-     (defun extract-chunks (stream)
-       "Splits a file source in docs and code"
-       (with-output-to-string (output)
-         (loop
-            :with current-chunk := nil
-            :for line := (read-line stream nil)
-            :while line
-            :do
-            (cond
-              ((scan "@chunk\\s+(.+)" line)
-               (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
-                 (setf current-chunk (list :name chunk-name
-                                           :output (make-string-output-stream)))
-                 (write-chunk-name chunk-name output)
-                 (terpri output)))
-               (push (cons (getf current-chunk :name)
-                           (getf current-chunk :output))
-                     *chunks*)
-               (setf current-chunk nil))
-              (current-chunk
-               (let ((chunk-output (getf current-chunk :output)))
-                 (write-string line chunk-output)
-                 (terpri chunk-output)))
-              (t
-               (write-string line output)
-               (terpri output))))))
-     
-```
-_Tests:_
+After includes have been expanded, it is time to extract chunks.
+
+`@chunk` definitions are extracted from the source, and added to the **chunks** list for later processing. The chunk name is printed via *write-chunk-name* when a chunk is found.
 
 ```lisp
      
-     (test chunks-test
-       (is
-        (equalp
-         (erudite::process-file-to-string (test-file "chunk1.lisp"))
-         "This is a good chunk
-     \\begin{code}
-     <<<chunk1>>>
-     \\end{code}
-     "))
-       (is
-        (equalp
-         (erudite::process-file-to-string (test-file "chunk2.lisp"))
-         "This is a good chunk
-     \\begin{code}
-     <<<chunk2>>>
-     \\end{code}
-     This is the chunk:
-     \\begin{code}
-     <<chunk2>>=
-     (+ 1 1)
-     
-     \\end{code}
-     "
-     ))
-     (signals error
-       (erudite::process-file-to-string (test-file "chunk3.lisp")))
-     (is
-      (equalp
-       (erudite::process-file-to-string (test-file "chunk4.lisp"))
-       "\\begin{code}
-     <<chunk4>>=
-     (print \"Start\")
-     
-     \\end{code}
-     The end
-     \\begin{code}
-     <<<chunk4>>>
-     \\end{code}
-     "))
-     (is (equalp
-          (erudite::process-file-to-string (test-file "factorial.lisp"))
-          "This is the factorial function:
-     \\begin{code}
-     (defun factorial (n)
-       (if (<= n 1)
-     <<<base-case>>>
-     <<<recursive-case>>>
-           ))
-     
-     \\end{code}
-     The base case is simple, just check for \\verb|n=1| less:
-     \\begin{code}
-     <<base-case>>=
-           1
-     
-     \\end{code}
-     The recursive step is \\verb|n x n - 1|:
-     \\begin{code}
-     <<recursive-case>>=
-           (* n (factorial (1- n)))
-     
-     \\end{code}
-     ")))
+     (defun extract-chunks (string)
+       "Splits a file source in docs and code"
+       (with-input-from-string (stream string)
+         (with-output-to-string (output)
+           (loop
+     	:with current-chunk := nil
+     	:for line := (read-line stream nil)
+     	:while line
+     	:do
+     	   (cond
+     	     ((scan "@chunk\\s+(.+)" line)
+     	      (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
+     		(setf current-chunk (list :name chunk-name
+     					  :output (make-string-output-stream)))
+     		(write-chunk-name chunk-name output)
+     		(terpri output)))
+     	      (push (cons (getf current-chunk :name)
+     			  (getf current-chunk :output))
+     		    *chunks*)
+     	      (setf current-chunk nil))
+     	     (current-chunk
+     	      (let ((chunk-output (getf current-chunk :output)))
+     		(write-string line chunk-output)
+     		(terpri chunk-output)))
+     	     (t
+     	      (write-string line output)
+     	      (terpri output)))))))
      
 ```
+
+Once both includes have been expanded, and chunks have been pre proccessed, the resulting output with literate code is parsed into *fragments*. Fragments can be of type _documentation_ or type _code_. _documentation_ is the text that appears in Common Lisp comments. _code_ fragments are the rest. This is done via the split-file-source function.
 
 ```lisp
      
@@ -280,10 +210,10 @@ _Tests:_
        (with-input-from-string (stream str)
          (append-source-fragments
           (loop
-             :for line := (read-line stream nil)
-             :while line
-             :collect
-             (parse-line line stream)))))
+            :for line := (read-line stream nil)
+            :while line
+            :collect
+            (parse-line line stream)))))
      
      (defun parse-line (line stream)
        (or
@@ -306,33 +236,33 @@ Extract the comment source
 
 ```lisp
          (let ((comment
-                (with-output-to-string (s)
+                 (with-output-to-string (s)
 ```
 First, add the first comment line
 
 ```lisp
-                  (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
-                    (write-string comment-line s))
+                   (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
+                     (write-string comment-line s))
 ```
 While there are lines without \verb'|#', add them to the comment source
 
 ```lisp
-                  (loop
+                   (loop
                      :for line := (read-line stream nil)
                      :while (and line (not (search "|#" line)))
                      :do
-                     (terpri s)
-                     (write-string line s)
+                        (terpri s)
+                        (write-string line s)
                      :finally
 ```
 Finally, extract the last comment line
 
 ```lisp
-                     (if line
-                         (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
-                           (when comment-line
-                             (write-string comment-line s)))
-                         (error "EOF: Could not complete comment parsing"))))))
+                        (if line
+                            (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
+                              (when comment-line
+                                (write-string comment-line s)))
+                            (error "EOF: Could not complete comment parsing"))))))
            (list :doc comment))))
      
      (defun parse-short-comment (line stream)
@@ -347,50 +277,41 @@ A short comment was found
 ```lisp
          (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
                 (comment
-                 (with-output-to-string (s)
-                   (register-groups-bind (comment-line) (comment-regex line)
-                     (write-string
-                      (string-left-trim (list #\; #\ )
-                                        comment-line)
-                      s)))))
+                  (with-output-to-string (s)
+                    (register-groups-bind (comment-line) (comment-regex line)
+                      (write-string
+                       (string-left-trim (list #\; #\ )
+                                         comment-line)
+                       s)))))
            (list :doc comment))))
      
      (defun parse-code (line stream)
        (list :code line))
-     
-     (defun append-to-end (thing list)
-       (cond
-         ((null list)
-          (list thing))
-         (t
-          (setf (cdr (last list))
-                (list thing))
-          list)))
      
      (defun append-source-fragments (fragments)
        "Append docs and code fragments"
        (let ((appended-fragments nil)
              (current-fragment (first fragments)))
          (loop
-            :for fragment :in (cdr fragments)
-            :do
-            (if (equalp (first fragment) (first current-fragment))
+           :for fragment :in (cdr fragments)
+           :do
+              (if (equalp (first fragment) (first current-fragment))
 ```
 The fragments are of the same type. Append them
 
 ```lisp
-                (setf (second current-fragment)
-                      (with-output-to-string (s)
-                        (write-string (second current-fragment) s)
-                        (terpri s)
-                        (write-string (second fragment) s)))
+                  (setf (second current-fragment)
+                        (with-output-to-string (s)
+                          (write-string (second current-fragment) s)
+                          (terpri s)
+                          (write-string (second fragment) s)))
 ```
 else, there's a new kind of fragment
 
 ```lisp
-                (progn
-                  (setf appended-fragments (append-to-end current-fragment appended-fragments))
-                  (setf current-fragment fragment))))
+                  (progn
+                    (setf appended-fragments (append-to-end current-fragment appended-fragments))
+                    (setf current-fragment fragment))))
          (setf appended-fragments (append-to-end current-fragment appended-fragments))
          appended-fragments))
      
@@ -405,6 +326,9 @@ else, there's a new kind of fragment
      (defgeneric process-fragment (fragment-type fragment output cont))
      
      (defmethod process-fragment ((type (eql :code)) fragment output cont)
+       (when (not 
+     	 (zerop (length
+     		 (remove #\  (remove #\newline (second fragment))))))
 ```
 Extract and output indexes first
 
@@ -412,7 +336,7 @@ Extract and output indexes first
        (let ((indexes (extract-indexes (second fragment))))
          (write-indexes indexes output *output-type*))
        (write-code (second fragment) output *output-type*)
-       (funcall cont))
+       (funcall cont)))
      
      (defmethod process-fragment ((type (eql :doc)) fragment output cont)
        (with-input-from-string (input (second fragment))
@@ -445,13 +369,13 @@ Extract and output indexes first
      (defmethod process-doc ((syntax (eql :erudite)) output-type line stream cont)
        (let ((formatted-line line))
          (loop
-            :for syntax :in *erudite-syntax*
-            :while formatted-line
-            :when (match-syntax syntax formatted-line)
-            :do
-            (setf formatted-line (process-syntax syntax formatted-line stream output-type))
-            :finally (when formatted-line
-     		  (write-doc-line formatted-line stream output-type)))
+           :for syntax :in *erudite-syntax*
+           :while formatted-line
+           :when (match-syntax syntax formatted-line)
+             :do
+                (setf formatted-line (process-syntax syntax formatted-line stream output-type))
+           :finally (when formatted-line
+                      (write-doc-line formatted-line stream output-type)))
          (terpri stream)
          (funcall cont)))
      
@@ -491,6 +415,118 @@ Extract and output indexes first
        (write-code (format nil "<<~A>>=~%~A" chunk-name chunk)
                    stream *output-type*))
      
+```
+
+
+## Chunks and extracts post processing
+
+
+Once the literate code has been parsed and processed, it is time to resolve the pending chunks and extracts. This is done in *post-process-output* function.
+
+`INSERT_CHUNK` and `INSERT_EXTRACT` are looked for and replaced by entries in *chunks* and *extracts*, respectively.
+
+```lisp
+     
+     (defun post-process-output (str)
+       "Resolve chunk inserts and extract inserts after processing"
+     
+       (with-output-to-string (output)
+         (with-input-from-string (s str)
+           (loop
+             :for line := (read-line s nil)
+             :while line
+             :do
+                (cond
+                  ((scan "^__INSERT_CHUNK__(.*)$" line)
+                   (register-groups-bind (chunk-name)
+                       ("^__INSERT_CHUNK__(.*)$" line)
+```
+Insert the chunk
+
+```lisp
+                     (let ((chunk (find-chunk chunk-name)))
+                       (write-chunk chunk-name
+                                    (get-output-stream-string (cdr chunk))
+                                    output))))
+                  ((scan "^__INSERT_EXTRACT__(.*)$" line)
+                   (register-groups-bind (extract-name)
+                       ("^__INSERT_EXTRACT__(.*)$" line)
+```
+Insert the extract
+
+```lisp
+                     (let ((extract (find-extract extract-name)))
+                       (write-string (get-output-stream-string (cdr extract))
+                                     output))))
+                  (t
+                   (write-string line output)
+                   (terpri output)))))))
+     
+```
+
+
+## Conclusion
+
+
+The whole process is invoked from process-file-to-string function.
+
+```lisp
+     
+     (defmethod process-file-to-string ((pathname pathname))
+       (let ((*current-path* (fad:pathname-directory-pathname pathname)))
+         (with-open-file (f pathname)
+           (post-process-output
+            (with-output-to-string (s)
+              (process-fragments
+               (split-file-source
+                (extract-chunks 
+     	    (expand-includes f)))
+               s))))))
+     
+     (defmethod process-file-to-string ((files cons))
+       (post-process-output
+        (with-output-to-string (s)
+          (let ((*current-path* 
+     	     (fad:pathname-directory-pathname (first files))))
+            (process-fragments
+             (loop
+               :for file :in files
+               :appending
+               (with-open-file (f file)
+                 (split-file-source
+                  (extract-chunks 
+     	      (expand-includes f)))))
+             s)))))
+     
+     (defmethod process-file-to-string :before (pathname)
+       (setf *chunks* nil
+             *extracts* nil))
+     
+     (defmethod process-file-to-string :after (pathname)
+       (setf *chunks* nil
+             *extracts* nil))
+     
+     (defun process-string (string)
+       (let ((*chunks* nil)
+             (*extracts* nil))
+         (post-process-output
+          (with-input-from-string (f string)
+            (with-output-to-string (s)
+              (process-fragments
+               (split-file-source
+                (extract-chunks 
+     	    (expand-includes f)))
+               s))))))
+     
+```
+
+
+
+# Source code indexing
+
+
+```lisp
+     
      (defun parse-definition-type (str)
        (case (intern (string-upcase str))
          (defun :function)
@@ -505,26 +541,26 @@ Extract and output indexes first
      (defun extract-indexes (code)
        (let ((indexes))
          (loop
-            :for line :in (split-sequence:split-sequence #\newline code)
-            :do
-            (do-register-groups (definition-type name) 
-     	   ("^\\((def\\S*)\\s+([^\\s(]*)" line)
-     	 (push (list (parse-definition-type definition-type)
-     		     name)
-     	       indexes)))
+           :for line :in (split-sequence:split-sequence #\newline code)
+           :do
+              (do-register-groups (definition-type name)
+                  ("^\\((def\\S*)\\s+([^\\s(]*)" line)
+                (push (list (parse-definition-type definition-type)
+                            name)
+                      indexes)))
          indexes))
      
      (defgeneric write-indexes (indexes output output-type))
      
      (defmethod write-indexes (indexes output (output-type (eql :latex)))
        (when indexes
-         ; (format output "\\lstset{~{index={~A}~^,~}}"
-         ; 	    (mapcar (alexandria:compose #'escape-latex #'second)
-         ; 		    indexes))
+                                             ; (format output "\\lstset{~{index={~A}~^,~}}"
+                                             ;           (mapcar (alexandria:compose #'escape-latex #'second)
+                                             ;                   indexes))
          (loop for index in (remove-duplicates indexes :key #'second :test #'equalp)
-     	 do 
-     	 (format output "\\index{~A}~%" (escape-latex (second index)))
-     	 (format output "\\label{~A}~%" (latex-label (second index))))
+               do
+                  (format output "\\index{~A}~%" (escape-latex (second index)))
+                  (format output "\\label{~A}~%" (latex-label (second index))))
          (terpri output)))
      
      (defmethod write-indexes (indexes output (output-type (eql :sphinx)))
@@ -544,7 +580,7 @@ TODO: implement
      (defun escape-latex (str)
        (let ((escaped str))
          (flet ((%replace (thing replacement)
-     	     (setf escaped (regex-replace-all thing escaped replacement))))
+                  (setf escaped (regex-replace-all thing escaped replacement))))
            (%replace "\\\\" "\\textbackslash")
            (%replace "\\&" "\\&")
            (%replace "\\%" "\\%")
@@ -554,13 +590,13 @@ TODO: implement
            (%replace "\\{" "\\{")
            (%replace "\\}" "\\}")
            (%replace "\\~" "\\textasciitilde")
-           (%replace "\\^" "\\textasciicircum")      
+           (%replace "\\^" "\\textasciicircum")
            escaped)))
      
      (defun latex-label (str)
        (let ((escaped str))
          (flet ((%replace (thing replacement)
-     	     (setf escaped (regex-replace-all thing escaped replacement))))
+                  (setf escaped (regex-replace-all thing escaped replacement))))
            (%replace "\\\\" "=")
            (%replace "\\&" "=")
            (%replace "\\%" "=")
@@ -570,7 +606,7 @@ TODO: implement
            (%replace "\\{" "=")
            (%replace "\\}" "=")
            (%replace "\\~" "=")
-           (%replace "\\^" "=")      
+           (%replace "\\^" "=")
            escaped)))
 ```
 
@@ -606,9 +642,9 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
      (defgeneric gen-doc (output-type output files &rest args))
      
      (defmethod gen-doc ((output-type (eql :latex)) output files
-                         &key 
-     		      (title *title*)
-     		      (subtitle *subtitle*)
+                         &key
+                           (title *title*)
+                           (subtitle *subtitle*)
                            (author *author*)
                            template-pathname
                            (syntax *syntax*)
@@ -630,14 +666,14 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                                                "latex/template.tex")))))
                (body (process-file-to-string files)))
            (write-string
-            (funcall template (list :title (or title 
-     					  *title* 
-     					  (error "No document title specified"))
-     			       :subtitle (or subtitle
-     					     *subtitle*)	     
-                                    :author (or author 
-     					   *author*
-     					   (error "No document author specified"))
+            (funcall template (list :title (or title
+                                               *title*
+                                               (error "No document title specified"))
+                                    :subtitle (or subtitle
+                                                  *subtitle*)
+                                    :author (or author
+                                                *author*
+                                                (error "No document author specified"))
                                     :body body))
             output))
          t))
@@ -702,751 +738,5 @@ Markdown is another output type.
                            (file-to-string postlude)
                            postlude)
                        output)))
-     
-```
-
-# Command line interface
-
-
-It is possible to invoke *Erudite* from the command line
- 
-Run `make` to build `erudite` executable.
-
-This is the command line syntax:
-
-```
-Usage: erudite [-hvd] [+vd] [OPTIONS] FILES...
-
-Erudite is a Literate Programming System for Common Lisp
-  -h, --help                  Print this help and exit.
-  --version                   Print Erudite version
-  -(+)v, --verbose[=yes/no]   Run in verbose mode
-                              Fallback: yes
-                              Environment: VERBOSE
-  -(+)d, --debug[=on/off]     Turn debugging on or off.
-                              Fallback: on
-                              Environment: DEBUG
-  -o, --output=OUTPUT         The output file. If none is used, result is 
-                              printed to stdout
-  --output-type=OUTPUT-TYPE   The output type. One of 'latex', 'sphinx'
-                              Default: latex
-  --syntax=SYNTAX             The syntax used in source files. One of 'latex', 
-                              'sphinx', 'erudite'
-                              Default: erudite
-  --author=AUTHOR             The author to appear in the document
-  --title=TITLE               The document title
-```
-
-Then run `sudo make install` to install globally in your system
-
-Here is an example usage:
-```
-erudite -o erudite.tex erudite.lisp
-```
-
-
-## Implementation
-
-
-The command line is implemented via the *com.dvl.clon* library.
-
-```lisp
-     
-     (ql:quickload :com.dvlsoft.clon)
-     (ql:quickload :erudite)
-     
-     (defpackage erudite.cli
-       (:use :cl :erudite))
-     
-     (eval-when (:execute :load-toplevel :compile-toplevel)
-       (com.dvlsoft.clon:nickname-package))
-     
-     (clon:defsynopsis (:postfix "FILES...")
-       (text :contents (format nil "Erudite is a Literate Programming System for Common Lisp"))
-       (flag :short-name "h" :long-name "help"
-             :description "Print this help and exit.")
-       (flag :long-name "version"
-             :description "Print Erudite version")
-       (switch :short-name "v" :long-name "verbose"
-               :description "Run in verbose mode"
-               :env-var "VERBOSE")
-       (switch :short-name "d" :long-name "debug"
-               :description "Turn debugging on or off."
-               :argument-style :on/off
-               :env-var "DEBUG")
-       (path :long-name "output"
-             :short-name "o"
-     	:argument-name "OUTPUT"
-     	:type :file
-     	:description "The output file. If none is used, result is printed to stdout")
-       (enum :long-name "output-type"
-     	:argument-name "OUTPUT-TYPE"
-     	:enum (list :latex :sphinx)
-     	:default-value :latex
-     	:description "The output type. One of 'latex', 'sphinx'")
-       (enum :long-name "syntax"
-     	:argument-name "SYNTAX"
-     	:enum (list :erudite :latex :sphinx)
-     	:default-value :erudite
-     	:description "The syntax used in source files. One of 'latex', 'sphinx', 'erudite'")
-       (stropt :long-name "author"
-               :argument-name "AUTHOR"
-     	  :description "The author to appear in the document")
-       (stropt :long-name "title"
-               :argument-name "TITLE"
-     	  :description "The document title"))
-     
-     (defun stringp* (str)
-       (and (stringp str)
-            (not (equalp str ""))
-            str))
-     
-     (defun main ()
-       (clon:make-context)
-       (cond 
-         ((or (clon:getopt :short-name "h")
-     	 (not (clon:cmdline-p)))
-          (clon:help))
-         ((clon:getopt :long-name "version")
-          (print "Erudite Literate Programming System for Common Lisp version 0.0.1"))
-         (t
-          (let ((title (stringp* (clon:getopt :long-name "title")))
-     	   (author (stringp* (clon:getopt :long-name "author")))
-     	   (output-type (clon:getopt :long-name "output-type"))
-     	   (syntax (clon:getopt :long-name "syntax"))
-     	   (output (or (clon:getopt :long-name "output")
-     		       t))
-     	   (files (mapcar #'pathname (clon:remainder))))
-            (erudite:erudite output files 
-     			:title title
-     			:author author
-     			:output-type output-type
-     			:syntax syntax)))))
-     
-     (clon:dump "erudite" main)
-```
-
-# Commands
-
-
-```lisp
-     
-```
-
-```lisp
-     
-```
-Commands are held in *commands* list
-
-```lisp
-     (defvar *commands* nil)
-     
-     (defun find-command (name &optional (error-p t))
-       (let ((command (gethash name *commands*)))
-         (when (and error-p (not command))
-           (error "Invalid command: ~A" command))
-         command))
-     
-     (defun find-matching-command (line)
-       (loop
-          :for command :in *commands*
-          :when (match-command command line)
-          :return command))
-     
-```
-
-## Commands definition
-
-
-```lisp
-     
-     (defmacro define-command (name &body body)
-       (let ((match-function-def (or (find :match body :key #'car)
-                                     (error "Specify a match function")))
-             (process-function-def (or (find :process body :key #'car)
-                                       (error "Specify a process function"))))
-         `(progn
-            ,(destructuring-bind (_ match-args &body match-body) match-function-def
-                                 `(defmethod match-command ((command (eql ',name))
-                                                            ,@match-args)
-                                    ,@match-body))
-            ,(destructuring-bind (_ process-args &body process-body)
-                                 process-function-def
-                                 `(defmethod process-command ((command (eql ',name))
-                                                              ,@process-args)
-                                    ,@process-body))
-            (pushnew ',name *commands*))))
-     
-```
-
-## Commands list
-
-
-```lisp
-     
-```
-
-### Input type
-
-
-```lisp
-     
-     (define-command syntax
-       (:match (line)
-         (scan "@syntax\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (syntax) ("@syntax\\s+(.+)" line)
-                   (setf *syntax* (intern (string-upcase syntax) :keyword)))
-                 (funcall cont)))
-     
-```
-
-### Output type
-
-
-```lisp
-     (define-command output-type
-       (:match (line)
-         (scan "@output-type\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (output-type) ("@output-type\\s+(.+)" line)
-                   (setf *output-type* (intern (string-upcase output-type) :keyword)))
-                 (funcall cont)))
-     
-```
-
-### Title
-
-
-```lisp
-     
-     (define-command title
-       (:match (line)
-         (scan "@title\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (title) ("@title\\s+(.+)" line)
-                   (setf *title* title))
-                 (funcall cont)))
-     
-```
-
-### Subtitle
-
-
-```lisp
-     
-     (define-command subtitle
-       (:match (line)
-         (scan "@subtitle\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (subtitle) ("@subtitle\\s+(.+)" line)
-                   (setf *subtitle* subtitle))
-                 (funcall cont)))
-     
-```
-
-### Author
-
-
-```lisp
-     
-     (define-command author
-       (:match (line)
-         (scan "@author\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (author) ("@author\\s+(.+)" line)
-                   (setf *author* author))
-                 (funcall cont)))
-     
-```
-
-### Chunks
-
-
-```lisp
-     
-     (defun find-chunk (chunk-name &key (error-p t))
-       (or (assoc chunk-name *chunks* :test #'equalp)
-           (error "Chunk not defined: ~A" chunk-name)))
-     
-     (define-command echo
-       (:match (line)
-         (scan "@echo\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (chunk-name) ("@echo\\s+(.+)" line)
-     	      (format output "__INSERT_CHUNK__~A~%" chunk-name)
-     	      (funcall cont))))
-     
-```
-
-### Extraction
-
-
-```lisp
-     
-     (defvar *extracts* nil)
-     (defvar *current-extract* nil)
-     
-     (defun find-extract (extract-name &key (error-p t))
-       (or (assoc extract-name *extracts* :test #'equalp)
-           (and error-p
-                (error "No text extracted with name: ~A" extract-name))))
-     
-     (define-command extract
-       (:match (line)
-         (scan "@extract\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (extract-name) ("@extract\\s+(.+)" line)
-```
-Build and register the extracted piece for later processing
-Redirect the output to the "extract output"
-
-```lisp
-                   (let* ((extract-output (make-string-output-stream))
-     		     (*current-extract* (list :name extract-name
-                                                    :output extract-output
-                                                    :original-output output)))
-                       (funcall cont :output extract-output)))))
-     
-     (define-command end-extract
-       (:match (line)
-         (scan "@end extract" line))
-       (:process (line input output cont)
-                 (push (cons (getf *current-extract* :name)
-                             (getf *current-extract* :output))
-                       *extracts*)
-```
-Restore the output
-
-```lisp
-                 (funcall cont :output (getf *current-extract* :original-output))))
-     
-     (define-command insert
-       (:match (line)
-         (scan "@insert\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (extract-name) ("@insert\\s+(.+)" line)
-                   (format output "__INSERT_EXTRACT__~A~%" extract-name)
-     	      (funcall cont))))
-     
-```
-**Tests**
-
-```lisp
-     
-     (test extract-test
-       (is
-        (equalp
-         (erudite::process-file-to-string (test-file "extract1.lisp"))
-         "Extract test
-     This has been extracted
-     \\begin{code}
-     (+ 1 2)
-     \\end{code}
-     "))
-     (signals error
-       (erudite::process-file-to-string (test-file "extract2.lisp")))
-     (is
-      (equalp
-       (erudite::process-file-to-string (test-file "extract3.lisp"))
-       "Start
-     Extract 3
-     End
-     ")))
-     
-```
-
-```lisp
-     
-```
-
-### Ignore
-
-
-```lisp
-     
-     (defvar *ignore* nil)
-     
-     (define-command ignore
-       (:match (line)
-         (scan "@ignore" line))
-       (:process (line input output cont)
-                 (setf *ignore* t)
-                 (funcall cont)))
-     
-     (define-command end-ignore
-       (:match (line)
-         (scan "@end ignore" line))
-       (:process (line input output cont)
-                 (setf *ignore* nil)
-                 (funcall cont)))
-     
-     (defmethod process-doc :around (syntax output-type line stream cont)
-       (if *ignore*
-           (funcall cont)
-           (call-next-method)))
-     
-     (defmethod process-fragment :around ((type (eql :code)) fragment output cont)
-       (if *ignore*
-           (funcall cont)
-           (call-next-method)))
-     
-     (defmethod maybe-process-command :around (line input output cont)
-       (if (and *ignore* (not (match-command 'end-ignore line)))
-           (funcall cont)
-           (call-next-method)))
-     
-```
-
-### Include
-
-
-```lisp
-     
-     (defvar *include-path* nil)
-     
-     (define-command include-path
-       (:match (line)
-         (scan "@include-path\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (path) ("@include-path\\s+(.+)" line)
-                   (setf *include-path* (pathname path))
-                   (funcall cont))))
-     
-     (define-command include
-       (:match (line)
-         (scan "@include\\s+(.+)" line))
-       (:process (line input output cont)
-                 (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
-                   (let ((pathname (cond
-                                     ((fad:pathname-absolute-p
-                                       (pathname filename-or-path))
-                                      filename-or-path)
-                                     (*include-path*
-                                      (merge-pathnames filename-or-path
-                                                       *include-path*))
-                                     (t (merge-pathnames filename-or-path
-                                                         *current-path*)))))
-```
-Process and output the included file
-
-```lisp
-                     (write-string (process-file-to-string pathname) output)
-     		(terpri output)
-     		(funcall cont)))))
-```
-
-# Erudite syntax
-
-
-```lisp
-     
-```
-
-```lisp
-     
-```
-Erudite formatting operations are held in *erudite-syntax* list
-
-```lisp
-     (defvar *erudite-syntax* nil)
-     
-     (defun find-syntax (name &optional (error-p t))
-       (let ((command (gethash name *erudite-syntax*)))
-         (when (and error-p (not command))
-           (error "Invalid syntax: ~A" command))
-         command))
-     
-```
-
-## Syntax definition
-
-
-```lisp
-     
-     (defmacro define-erudite-syntax (name &body body)
-       (let ((match-function-def (or (find :match body :key #'car)
-                                     (error "Specify a match function")))
-             (process-function-def (or (find :process body :key #'car)
-                                       (error "Specify a process function"))))
-         `(progn
-            ,(destructuring-bind (_ match-args &body match-body) match-function-def
-                                 `(defmethod match-syntax ((command (eql ',name))
-     						      ,@match-args)
-                                    ,@match-body))
-            ,(destructuring-bind (_ process-args &body process-body)
-                                 process-function-def
-                                 `(defmethod process-syntax ((command (eql ',name))
-     							,@process-args)
-                                    ,@process-body))
-            (pushnew ',name *erudite-syntax*))))
-     
-```
-
-## Commands list
-
-
-```lisp
-     
-```
-
-### Section
-
-
-```lisp
-     (define-erudite-syntax section
-       (:match (line)
-         (scan "@section" line))
-       (:process (line output output-type)
-     	    (register-groups-bind (title) 
-     		("@section\\s+(.+)" line)
-     	      (format-syntax output (list :section title)))
-     	    nil))
-     
-```
-
-### Subsection
-
-
-```lisp
-     (define-erudite-syntax subsection
-       (:match (line)
-         (scan "@subsection" line))
-       (:process (line output output-type)
-     	    (register-groups-bind (title) 
-     		("@subsection\\s+(.+)" line)
-     	      (format-syntax output (list :subsection title)))
-     	    nil))
-     
-```
-
-### Subsubsection
-
-
-```lisp
-     (define-erudite-syntax subsubsection
-       (:match (line)
-         (scan "@subsubsection" line))
-       (:process (line output output-type)
-     	    (register-groups-bind (title) 
-     		("@subsubsection\\s+(.+)" line)
-     	      (format-syntax output (list :subsubsection title)))
-     	    nil))
-     
-```
-
-### Verbatim
-
-
-```lisp
-     (define-erudite-syntax begin-verbatim
-       (:match (line)
-         (scan "@verbatim" line))
-       (:process (line output output-type)
-     	    (format-syntax output (list :begin-verbatim))
-     	    nil))
-     
-     (define-erudite-syntax end-verbatim
-       (:match (line)
-         (scan "@end verbatim" line))
-       (:process (line output output-type)
-     	    (format-syntax output (list :end-verbatim))
-     	    nil))
-     
-```
-
-### Code
-
-
-```lisp
-     (define-erudite-syntax begin-code
-       (:match (line)
-         (scan "@code" line))
-       (:process (line output output-type)
-     	    (format-syntax output (list :begin-code))
-     	    nil))
-     
-     (define-erudite-syntax end-code
-       (:match (line)
-         (scan "@end code" line))
-       (:process (line output output-type)
-     	    (format-syntax output (list :end-code))
-     	    nil))
-     
-```
-
-### Lists
-
-
-```lisp
-     (define-erudite-syntax begin-list
-       (:match (line)
-         (scan "@list" line))
-       (:process (line output output-type)
-     	    (format-syntax output (list :begin-list))
-     	    nil))
-     
-     (define-erudite-syntax end-list
-       (:match (line)
-         (scan "@end list" line))
-       (:process (line output output-type)
-     	    (format-syntax output (list :end-list))
-     	    nil))
-     
-     (define-erudite-syntax list-item
-       (:match (line)
-         (scan "@item" line))
-       (:process (line output output-type)
-     	    (regex-replace "@item" line
-     			   (lambda (match)
-     			     (format-syntax nil (list :list-item)))
-     			   :simple-calls t)))
-     
-```
-
-### Emphasis
-
-
-```lisp
-     (define-erudite-syntax emphasis
-       (:match (line)
-         (scan "@emph{(.*?)}" line))
-       (:process (line output output-type)
-     	    (regex-replace-all "@emph{(.*?)}" line
-     			       (lambda (match text)
-     				 (format-syntax nil (list :emph text)))
-     			       :simple-calls t)))
-     
-```
-
-### Bold
-
-
-```lisp
-     (define-erudite-syntax bold
-       (:match (line)
-         (scan "@bold{(.*?)}" line))
-       (:process (line output output-type)
-     	    (regex-replace-all "@bold{(.*?)}" line
-     			       (lambda (match text)
-     				 (format-syntax nil (list :bold text)))
-     			       :simple-calls t)))
-     
-```
-
-### Italics
-
-
-```lisp
-     (define-erudite-syntax italics
-       (:match (line)
-         (scan "@it{(.*?)}" line))
-       (:process (line output output-type)
-     	    (regex-replace-all "@it{(.*?)}" line
-     			       (lambda (match text)
-     				 (format-syntax nil (list :italics text)))
-     			       :simple-calls t)))
-     
-```
-
-### Inline verbatim
-
-
-```lisp
-     (define-erudite-syntax inline-verbatim
-       (:match (line)
-         (scan "@verb{(.*?)}" line))
-       (:process (line output output-type)
-     	    (regex-replace-all "@verb{(.*?)}" line
-     			       (lambda (match text)
-     				 (format-syntax nil (list :inline-verbatim text)))
-     			       :simple-calls t)))
-     
-```
-
-### Reference
-
-
-```lisp
-     (define-erudite-syntax reference
-       (:match (line)
-         (scan "@ref{(.*?)}" line))
-       (:process (line output output-type)
-     	    (regex-replace-all "@ref{(.*?)}" line
-     			       (lambda (match text)
-     				 (format-syntax nil (list :ref text)))
-     			       :simple-calls t)))
-     
-```
-
-## Syntax formatting
-
-
-```lisp
-     
-     (defvar *latex-document-class* :article)
-     
-     (defun format-syntax (destination syntax)
-       (if (null destination)
-           (with-output-to-string (stream)
-     	(%format-syntax *output-type* (first syntax) stream  syntax))
-           (%format-syntax *output-type* (first syntax) destination syntax)))
-```
-
-# Tests
-
-
-```lisp
-     
-     (defpackage erudite.test
-       (:use :cl :fiveam :erudite)
-       (:export :run-tests))
-     
-     (in-package :erudite.test)
-     
-```
-Tests are run with run-tests
-
-```lisp
-     
-     (defun run-tests ()
-       (run! 'erudite-tests))
-     
-     (def-suite erudite-tests)
-     
-     (in-suite erudite-tests)
-     
-```
-
-```lisp
-     
-```
-
-```lisp
-     
-     (defun test-file (filename)
-       (merge-pathnames filename
-                        (asdf:system-relative-pathname :erudite "test/")))
-     
-     (test basic-processing-test
-       (is
-        (equalp
-         (erudite::process-string ";; Hello
-     (print \"world\")")
-         "Hello
-     \\begin{code}
-     (print \"world\")
-     \\end{code}
-     "))
-       (is
-        (equalp
-         (erudite::process-string "#| Hello
-     |#
-     (print \"world\")")
-         "Hello
-     \\begin{code}
-     (print \"world\")
-     \\end{code}
-     ")))
      
 ```
