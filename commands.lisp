@@ -102,11 +102,11 @@
   (or (assoc chunk-name *chunks* :test #'equalp)
       (error "Chunk not defined: ~A" chunk-name)))
 
-(define-command echo
+(define-command insert-chunk
   (:match (line)
-    (scan "@echo\\s+(.+)" line))
+    (scan "@insert-chunk\\s+(.+)" line))
   (:process (line input output cont)
-            (register-groups-bind (chunk-name) ("@echo\\s+(.+)" line)
+            (register-groups-bind (chunk-name) ("@insert-chunk\\s+(.+)" line)
 	      (format output "__INSERT_CHUNK__~A~%" chunk-name)
 	      (funcall cont))))
 
@@ -183,36 +183,3 @@
   (if (and *ignore* (not (match-command 'end-ignore line)))
       (funcall cont)
       (call-next-method)))
-
-;; @subsubsection Include
-
-(defvar *include-path* nil)
-
-(define-command include-path
-  (:match (line)
-    (scan "@include-path\\s+(.+)" line))
-  (:process (line input output cont)
-	    (register-groups-bind (path) ("@include-path\\s+(.+)" line)
-              (setf *include-path* (pathname path))
-              (funcall cont))))
-
-(define-command include
-  (:match (line)
-    (scan "@include\\s+(.+)" line))
-  (:process (line input output cont)
-	    (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
-              (let ((pathname (cond
-                                ((fad:pathname-absolute-p
-                                  (pathname filename-or-path))
-                                 filename-or-path)
-                                (*include-path*
-                                 (merge-pathnames filename-or-path
-                                                  *include-path*))
-                                (*current-path* 
-				 (merge-pathnames filename-or-path
-						  *current-path*))
-				(t (error "No base path for include. This should not have happened")))))
-                ;; Process and output the included file
-                (write-string (process-file-to-string pathname) output)
-		(terpri output)
-		(funcall cont)))))

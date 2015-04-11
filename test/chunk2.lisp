@@ -3,4 +3,4 @@
 (+ 1 1)
 ;; @end chunk
 ;; This is the chunk:
-;; @echo chunk2
+;; @insert-chunk chunk2

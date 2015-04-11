@@ -10,6 +10,6 @@
       ))
 
 ;; The base case is simple, just check for @verb{n=1} less:
-;; @echo base-case
+;; @insert-chunk base-case
 ;; The recursive step is @verb{n x n - 1}:
-;; @echo recursive-case
+;; @insert-chunk recursive-case

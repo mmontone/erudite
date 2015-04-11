@@ -218,16 +218,12 @@ This is not ignored
 This is includeA
 \\begin{code}
 (print \"include A\")
-\\end{code}
-
-\\begin{code}
 (print \"Include\")
 \\end{code}
 This is includeB
 \\begin{code}
 (print \"include B\")
 \\end{code}
-
 ")))
 
 ;; @end extract

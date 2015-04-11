@@ -41,112 +41,87 @@ Erudite is invoked calling @ref{erudite} function.
 
 @insert erudite-function
 
-@section Implementation
+@section Algorithm
 
-First, files with literate code are parsed into @emph{fragments}. Fragments can be of type @it{documentation} or type @it{code}. @it{documentation} is the text that appears in Common Lisp comments. @it{code} fragments are the rest.
+Multiple passes are run on the input files. This is because we want to be able to invoke chunks and extracts from file to file, from top to down and down to top. In a word, from everywhere without restrictions. 
+
+@subsection Includes expansion
+
+In the first pass, @emph{@include} directives are expanded to be able to process the whole thing from a single stream.
 |#
 
-(defmethod process-file-to-string ((pathname pathname))
-  (let ((*current-path* (fad:pathname-directory-pathname pathname)))
-    (with-open-file (f pathname)
-      (post-process-output
-       (with-output-to-string (s)
-         (process-fragments
-          (split-file-source
-           (extract-chunks f))
-          s))))))
+(defvar *include-path* nil)
 
-(defmethod process-file-to-string ((files cons))
-  (post-process-output
-   (with-output-to-string (s)
-     (let ((*current-path* (fad:pathname-directory-pathname (first files))))
-       (process-fragments
-        (loop
-          :for file :in files
-          :appending
-          (with-open-file (f file)
-            (split-file-source
-             (extract-chunks f))))
-        s)))))
-
-(defmethod process-file-to-string :before (pathname)
-  (setf *chunks* nil
-        *extracts* nil))
-
-(defmethod process-file-to-string :after (pathname)
-  (setf *chunks* nil
-        *extracts* nil))
-
-(defun process-string (string)
-  (let ((*chunks* nil)
-        (*extracts* nil))
-    (post-process-output
-     (with-input-from-string (f string)
-       (with-output-to-string (s)
-         (process-fragments
-          (split-file-source
-           (extract-chunks f))
-          s))))))
-
-(defun post-process-output (str)
-  "Resolve chunk inserts and extract inserts after processing"
-
+(defun expand-includes (stream)
+  "Expand @include directives"
   (with-output-to-string (output)
-    (with-input-from-string (s str)
-      (loop
-        :for line := (read-line s nil)
-        :while line
-        :do
-           (cond
-             ((scan "^__INSERT_CHUNK__(.*)$" line)
-              (register-groups-bind (chunk-name)
-                  ("^__INSERT_CHUNK__(.*)$" line)
-                ;; Insert the chunk
-                (let ((chunk (find-chunk chunk-name)))
-                  (write-chunk chunk-name
-                               (get-output-stream-string (cdr chunk))
-                               output))))
-             ((scan "^__INSERT_EXTRACT__(.*)$" line)
-              (register-groups-bind (extract-name)
-                  ("^__INSERT_EXTRACT__(.*)$" line)
-                ;; Insert the extract
-                (let ((extract (find-extract extract-name)))
-                  (write-string (get-output-stream-string (cdr extract))
-                                output))))
-             (t
-              (write-string line output)
-              (terpri output)))))))
-
-;;; The parser works like a custom look-ahead parser, with a whole file line
-;;; being the slice looked ahead. And is implemented in Continuation Passing Style.
-;;; @subsection Chunks extraction
-(defun extract-chunks (stream)
-  "Splits a file source in docs and code"
-  (with-output-to-string (output)
-    (loop
-      :with current-chunk := nil
+    (loop 
       :for line := (read-line stream nil)
       :while line
       :do
-         (cond
-           ((scan "@chunk\\s+(.+)" line)
-            (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
-              (setf current-chunk (list :name chunk-name
-                                        :output (make-string-output-stream)))
-              (write-chunk-name chunk-name output)
-              (terpri output)))
-           ((scan "@end chunk" line)
-            (push (cons (getf current-chunk :name)
-                        (getf current-chunk :output))
-                  *chunks*)
-            (setf current-chunk nil))
-           (current-chunk
-            (let ((chunk-output (getf current-chunk :output)))
-              (write-string line chunk-output)
-              (terpri chunk-output)))
-           (t
-            (write-string line output)
-            (terpri output))))))
+	 (cond 
+	   ((scan "@include-path\\s+(.+)" line)
+	    (register-groups-bind (path) ("@include-path\\s+(.+)" line)
+              (setf *include-path* (pathname path))))
+	   ((scan "@include\\s+(.+)" line)
+	    (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
+              (let ((pathname (cond
+                                ((fad:pathname-absolute-p
+                                  (pathname filename-or-path))
+                                 filename-or-path)
+                                (*include-path*
+                                 (merge-pathnames filename-or-path
+                                                  *include-path*))
+                                (*current-path* 
+				 (merge-pathnames filename-or-path
+						  *current-path*))
+				(t (error "No base path for include. This should not have happened")))))
+		;; Expand the included file source into output
+		(write-string (file-to-string pathname) output))))
+	   (t
+	    (write-string line output)
+	    (terpri output))))))
+
+#| 
+@subsection Chunks extraction
+
+After includes have been expanded, it is time to extract chunks.
+
+@verb{@chunk} definitions are extracted from the source, and added to the @emph{*chunks*} list for later processing. The chunk name is printed via @emph{write-chunk-name} when a chunk is found.
+|#
+
+(defun extract-chunks (string)
+  "Splits a file source in docs and code"
+  (with-input-from-string (stream string)
+    (with-output-to-string (output)
+      (loop
+	:with current-chunk := nil
+	:for line := (read-line stream nil)
+	:while line
+	:do
+	   (cond
+	     ((scan "@chunk\\s+(.+)" line)
+	      (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
+		(setf current-chunk (list :name chunk-name
+					  :output (make-string-output-stream)))
+		(write-chunk-name chunk-name output)
+		(terpri output)))
+	     ((scan "@end chunk" line)
+	      (push (cons (getf current-chunk :name)
+			  (getf current-chunk :output))
+		    *chunks*)
+	      (setf current-chunk nil))
+	     (current-chunk
+	      (let ((chunk-output (getf current-chunk :output)))
+		(write-string line chunk-output)
+		(terpri chunk-output)))
+	     (t
+	      (write-string line output)
+	      (terpri output)))))))
+
+#|
+Once both includes have been expanded, and chunks have been pre proccessed, the resulting output with literate code is parsed into @emph{fragments}. Fragments can be of type @it{documentation} or type @it{code}. @it{documentation} is the text that appears in Common Lisp comments. @it{code} fragments are the rest. This is done via the @ref{split-file-source} function.
+|#
 
 (defun split-file-source (str)
   "Splits a file source in docs and code"
@@ -212,15 +187,6 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
 
 (defun parse-code (line stream)
   (list :code line))
-
-(defun append-to-end (thing list)
-  (cond
-    ((null list)
-     (list thing))
-    (t
-     (setf (cdr (last list))
-           (list thing))
-     list)))
 
 (defun append-source-fragments (fragments)
   "Append docs and code fragments"
@@ -336,6 +302,102 @@ First, files with literate code are parsed into @emph{fragments}. Fragments can 
 (defmethod write-chunk (chunk-name chunk stream)
   (write-code (format nil "<<~A>>=~%~A" chunk-name chunk)
               stream *output-type*))
+
+#|
+@subsection Chunks and extracts post processing
+
+Once the literate code has been parsed and processed, it is time to resolve the pending chunks and extracts. This is done in @emph{post-process-output} function.
+
+@verb{INSERT_CHUNK} and @verb{INSERT_EXTRACT} are looked for and replaced by entries in @ref{*chunks*} and @ref{*extracts*}, respectively.
+|#
+
+(defun post-process-output (str)
+  "Resolve chunk inserts and extract inserts after processing"
+
+  (with-output-to-string (output)
+    (with-input-from-string (s str)
+      (loop
+        :for line := (read-line s nil)
+        :while line
+        :do
+           (cond
+             ((scan "^__INSERT_CHUNK__(.*)$" line)
+              (register-groups-bind (chunk-name)
+                  ("^__INSERT_CHUNK__(.*)$" line)
+                ;; Insert the chunk
+                (let ((chunk (find-chunk chunk-name)))
+                  (write-chunk chunk-name
+                               (get-output-stream-string (cdr chunk))
+                               output))))
+             ((scan "^__INSERT_EXTRACT__(.*)$" line)
+              (register-groups-bind (extract-name)
+                  ("^__INSERT_EXTRACT__(.*)$" line)
+                ;; Insert the extract
+                (let ((extract (find-extract extract-name)))
+                  (write-string (get-output-stream-string (cdr extract))
+                                output))))
+             (t
+              (write-string line output)
+              (terpri output)))))))
+
+#|
+@subsubsection Conclusion
+
+The whole process is invoked from @ref{process-file-to-string} function.
+
+|#
+
+(defmethod process-file-to-string ((pathname pathname))
+  (let ((*current-path* (fad:pathname-directory-pathname pathname)))
+    (with-open-file (f pathname)
+      (post-process-output
+       (with-output-to-string (s)
+         (process-fragments
+          (split-file-source
+           (extract-chunks 
+	    (expand-includes f)))
+          s))))))
+
+(defmethod process-file-to-string ((files cons))
+  (post-process-output
+   (with-output-to-string (s)
+     (let ((*current-path* 
+	     (fad:pathname-directory-pathname (first files))))
+       (process-fragments
+        (loop
+          :for file :in files
+          :appending
+          (with-open-file (f file)
+            (split-file-source
+             (extract-chunks 
+	      (expand-includes f)))))
+        s)))))
+
+(defmethod process-file-to-string :before (pathname)
+  (setf *chunks* nil
+        *extracts* nil))
+
+(defmethod process-file-to-string :after (pathname)
+  (setf *chunks* nil
+        *extracts* nil))
+
+(defun process-string (string)
+  (let ((*chunks* nil)
+        (*extracts* nil))
+    (post-process-output
+     (with-input-from-string (f string)
+       (with-output-to-string (s)
+         (process-fragments
+          (split-file-source
+           (extract-chunks 
+	    (expand-includes f)))
+          s))))))
+
+#|
+
+@section Source code indexing
+
+|#
 
 (defun parse-definition-type (str)
   (case (intern (string-upcase str))
