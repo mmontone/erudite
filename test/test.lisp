@@ -337,7 +337,8 @@ This should appear
    (equalp
     (let ((erudite::*output-type* :latex))
       (erudite::process-file-to-string (test-file "if.lisp")))
-    "This is latex text"))
+    "This is latex text
+"))
   (is
    (equalp
     (let ((erudite::*output-type* :sphinx))
