@@ -191,7 +191,7 @@
             (setf *ignore* nil)
             (funcall cont)))
 
-;; @subsection Conditional output
+;; @subsubsection Conditional output
 
 (defvar *output-condition* (list t))
 
