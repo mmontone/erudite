@@ -181,7 +181,8 @@ In the first pass, *include* directives are expanded to be able to process the w
 Expand the included file source into output
 
 ```lisp
-		(write-string (file-to-string pathname) output)
+		(with-input-from-string (source (file-to-string pathname))
+		  (write-string (expand-includes source) output))
 		)))
 	   (t
 	    (write-string line output)
@@ -354,16 +355,29 @@ else, there's a new kind of fragment
 (defgeneric process-fragment (fragment-type fragment output cont))
 
 (defmethod process-fragment ((type (eql :code)) fragment output cont)
+```
+Ensure that this is not an empty code fragment first
+
+```lisp
   (when (not 
 	 (zerop (length
 		 (remove #\  (remove #\newline (second fragment))))))
 ```
-Extract and output indexes first
+Extract and output indexes if it is enabled
 
 ```lisp
-    (let ((indexes (extract-indexes (second fragment))))
-      (write-indexes indexes output *output-type*))
+    (when *code-indexing*
+      (let ((indexes (extract-indexes (second fragment))))
+	(write-indexes indexes output *output-type*)))
+```
+Finally write the code fragment to the output
+
+```lisp
     (write-code (second fragment) output *output-type*))
+```
+Goon with the parsing
+
+```lisp
   (funcall cont))
 
 (defmethod process-fragment ((type (eql :doc)) fragment output cont)
@@ -693,7 +707,7 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                      (file-to-string (or template-pathname
                                          (asdf:system-relative-pathname
                                           :erudite
-                                          "latex/template.tex")))))
+                                          "resource/template.tex")))))
           (body (process-file-to-string files)))
       (write-string
        (funcall template (list :title (or title
@@ -847,12 +861,12 @@ The command line is implemented via the *com.dvl.clon* library.
 	:description "The output file. If none is used, result is printed to stdout")
   (enum :long-name "output-type"
 	:argument-name "OUTPUT-TYPE"
-	:enum (list :latex :sphinx)
+	:enum (list :latex :sphinx :markdown)
 	:default-value :latex
 	:description "The output type. One of 'latex', 'sphinx'")
   (enum :long-name "syntax"
 	:argument-name "SYNTAX"
-	:enum (list :erudite :latex :sphinx)
+	:enum (list :erudite :latex :sphinx :markdown)
 	:default-value :erudite
 	:description "The syntax used in source files. One of 'latex', 'sphinx', 'erudite'")
   (stropt :long-name "author"
@@ -972,6 +986,38 @@ Commands are held in *commands* list
   (:process (line input output cont)
             (register-groups-bind (output-type) ("@output-type\\s+(.+)" line)
               (setf *output-type* (intern (string-upcase output-type) :keyword)))
+            (funcall cont)))
+
+```
+
+### Code indexing
+
+
+```lisp
+(define-command code-indexing
+  (:match (line)
+    (scan "@code-indexing\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (code-indexing) ("@code-indexing\\s+(.+)" line)
+              (setf *code-indexing* 
+		    (let ((*package* *erudite-package*))
+		      (read-from-string code-indexing))))
+            (funcall cont)))
+
+```
+
+### Package
+
+
+```lisp
+(define-command package
+  (:match (line)
+    (scan "@package\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (package-name) ("@package\\s+(.+)" line)
+              (setf *erudite-package* (find-package (intern 
+						     (string-upcase package-name)
+						     :keyword))))
             (funcall cont)))
 
 ```
@@ -1113,18 +1159,77 @@ Restore the output
             (setf *ignore* nil)
             (funcall cont)))
 
+```
+
+## Conditional output
+
+
+```lisp
+
+(defvar *output-condition* (list t))
+
+(define-command when
+  (:match (line)
+    (scan "@when\\s(.*)" line))
+  (:process (line input output cont)
+	    (register-groups-bind (condition) ("@when\\s(.*)" line)
+	      (let ((value (eval (let ((*package* *erudite-package*))
+				   (read-from-string condition)))))
+		(push value *output-condition*))
+	      (funcall cont))))
+
+(define-command end-when
+  (:match (line)
+    (scan "@end when" line))
+  (:process (line input output cont)
+	    (pop *output-condition*)
+	    (funcall cont)))
+
+(define-command if
+  (:match (line)
+    (scan "@if\\s(.*)" line))
+  (:process (line input output cont)
+	    (register-groups-bind (condition) ("@if\\s(.*)" line)
+	      (let ((value (eval (let ((*package* *erudite-package*))
+				   (read-from-string condition)))))
+		(push value *output-condition*))
+	      (funcall cont))))
+
+(define-command else
+  (:match (line)
+    (scan "@else" line))
+  (:process (line input output cont)
+	    (let ((value (pop *output-condition*)))
+		(push (not value) *output-condition*))
+	    (funcall cont)))
+
+(define-command end-if
+  (:match (line)
+    (scan "@end if" line))
+  (:process (line input output cont)
+	    (pop *output-condition*)
+	    (funcall cont)))
+
 (defmethod process-doc :around (syntax output-type line stream cont)
-  (if *ignore*
+  (if (or *ignore*
+	  (not (every #'identity *output-condition*)))
       (funcall cont)
       (call-next-method)))
 
 (defmethod process-fragment :around ((type (eql :code)) fragment output cont)
-  (if *ignore*
+  (if (or *ignore*
+	  (not (every #'identity *output-condition*)))
       (funcall cont)
       (call-next-method)))
 
 (defmethod maybe-process-command :around (line input output cont)
-  (if (and *ignore* (not (match-command 'end-ignore line)))
+  (if (or (and *ignore* (not (match-command 'end-ignore line)))
+	  (and (not (every #'identity *output-condition*))
+	       (not (or (match-command 'when line) 
+			(match-command 'end-when line)
+			(match-command 'else line)
+			(match-command 'if line)
+			(match-command 'end-if line)))))
       (funcall cont)
       (call-next-method)))
 ```
