@@ -317,3 +317,36 @@ This is verbatim
 ")))
 
 ;; @end extract
+
+;; @extract when-test
+
+(test when-test
+  (is
+   (equalp
+    (erudite::process-file-to-string (test-file "when.lisp"))
+    "When test
+This should appear
+")))
+
+;; @end extract
+
+;; @extract if-test
+
+(test if-test
+  (is
+   (equalp
+    (let ((erudite::*output-type* :latex))
+      (erudite::process-file-to-string (test-file "if.lisp")))
+    "This is latex text"))
+  (is
+   (equalp
+    (let ((erudite::*output-type* :sphinx))
+      (erudite::process-file-to-string (test-file "if.lisp")))
+    "This is sphinx text
+"))
+  (is
+   (equalp
+    (let ((erudite::*output-type* :markdown))
+      (erudite::process-file-to-string (test-file "if.lisp")))
+    "This is other output text
+")))

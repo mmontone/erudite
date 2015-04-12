@@ -1,3 +1,4 @@
+;; @code-indexing nil
 ;; This is the factorial function:
 (defun factorial (n)
   (if (<= n 1)

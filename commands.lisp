@@ -66,6 +66,28 @@
               (setf *output-type* (intern (string-upcase output-type) :keyword)))
             (funcall cont)))
 
+;; @subsubsection Code indexing
+(define-command code-indexing
+  (:match (line)
+    (scan "@code-indexing\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (code-indexing) ("@code-indexing\\s+(.+)" line)
+              (setf *code-indexing* 
+		    (let ((*package* *erudite-package*))
+		      (read-from-string code-indexing))))
+            (funcall cont)))
+
+;; @subsubsection Package
+(define-command package
+  (:match (line)
+    (scan "@package\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (package-name) ("@package\\s+(.+)" line)
+              (setf *erudite-package* (find-package (intern 
+						     (string-upcase package-name)
+						     :keyword))))
+            (funcall cont)))
+
 ;; @subsubsection Title
 
 (define-command title
@@ -169,17 +191,69 @@
             (setf *ignore* nil)
             (funcall cont)))
 
+;; @subsection Conditional output
+
+(defvar *output-condition* (list t))
+
+(define-command when
+  (:match (line)
+    (scan "@when\\s(.*)" line))
+  (:process (line input output cont)
+	    (register-groups-bind (condition) ("@when\\s(.*)" line)
+	      (let ((value (eval (let ((*package* *erudite-package*))
+				   (read-from-string condition)))))
+		(push value *output-condition*))
+	      (funcall cont))))
+
+(define-command end-when
+  (:match (line)
+    (scan "@end when" line))
+  (:process (line input output cont)
+	    (pop *output-condition*)
+	    (funcall cont)))
+
+(define-command if
+  (:match (line)
+    (scan "@if\\s(.*)" line))
+  (:process (line input output cont)
+	    (register-groups-bind (condition) ("@if\\s(.*)" line)
+	      (let ((value (eval (let ((*package* *erudite-package*))
+				   (read-from-string condition)))))
+		(push value *output-condition*))
+	      (funcall cont))))
+
+(define-command else
+  (:match (line)
+    (scan "@else" line))
+  (:process (line input output cont)
+	    (let ((value (pop *output-condition*)))
+		(push (not value) *output-condition*))
+	    (funcall cont)))
+
+(define-command end-if
+  (:match (line)
+    (scan "@end if" line))
+  (:process (line input output cont)
+	    (pop *output-condition*)
+	    (funcall cont)))
+
 (defmethod process-doc :around (syntax output-type line stream cont)
-  (if *ignore*
+  (if (or *ignore*
+	  (not (every #'identity *output-condition*)))
       (funcall cont)
       (call-next-method)))
 
 (defmethod process-fragment :around ((type (eql :code)) fragment output cont)
-  (if *ignore*
+  (if (or *ignore*
+	  (not (every #'identity *output-condition*)))
       (funcall cont)
       (call-next-method)))
 
 (defmethod maybe-process-command :around (line input output cont)
-  (if (and *ignore* (not (match-command 'end-ignore line)))
+  (if (or (and *ignore* (not (match-command 'end-ignore line)))
+	  (and (not (every #'identity *output-condition*))
+	       (not (or (match-command 'end-when line)
+			(match-command 'else line)
+			(match-command 'end-if line)))))
       (funcall cont)
       (call-next-method)))

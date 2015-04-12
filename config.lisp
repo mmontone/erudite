@@ -11,5 +11,7 @@
 (defvar *catch-errors-p* t)
 (defvar *verbose* nil)
 (defvar *debug* nil)
+(defvar *code-indexing* t)
+(defvar *erudite-package* (find-package :erudite))
 
 (log:config :off)

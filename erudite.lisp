@@ -243,13 +243,17 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
 (defgeneric process-fragment (fragment-type fragment output cont))
 
 (defmethod process-fragment ((type (eql :code)) fragment output cont)
+  ;; Ensure that this is not an empty code fragment first
   (when (not 
 	 (zerop (length
 		 (remove #\  (remove #\newline (second fragment))))))
-    ;; Extract and output indexes first
-    (let ((indexes (extract-indexes (second fragment))))
-      (write-indexes indexes output *output-type*))
+    ;; Extract and output indexes if it is enabled
+    (when *code-indexing*
+      (let ((indexes (extract-indexes (second fragment))))
+	(write-indexes indexes output *output-type*)))
+    ;; Finally write the code fragment to the output
     (write-code (second fragment) output *output-type*))
+  ;; Goon with the parsing
   (funcall cont))
 
 (defmethod process-fragment ((type (eql :doc)) fragment output cont)
