@@ -103,6 +103,15 @@ This is includeB
 
 
 
+
+# Conditional output
+
+When test
+This should appear
+
+This is other output text
+
+
 # Erudite syntax
 
 
@@ -112,11 +121,13 @@ This is includeB
 ## Subsubsection
 
 
+
 ## Verbatim
 
 ```
 This is in verbatim
 ```
+
 
 ## Code
 
@@ -127,11 +138,13 @@ This is in verbatim
 (print "Hello world"))
 ```
 
+
 ## List
 
 
 *  First item
 *  Second item
+
 
 
 ## Emphasis
@@ -142,17 +155,21 @@ This is in verbatim
 
 _This is in italics_
 
+
 ## Inline verbatim
 
 This is in `inline verbatim`
+
 
 ## Link
 
 [Erudite](https://github.com/mmontone/erudite)
 
+
 ## Reference
 
 hello-world
+
 
 ## Label and index
 

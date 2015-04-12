@@ -63,9 +63,6 @@ The end
 \end{code}
 
 This is the factorial function:
-\index{factorial}
-\label{factorial}
-
 \begin{code}
 (defun factorial (n)
   (if (<= n 1)
@@ -115,35 +112,50 @@ This is includeB
 
 \section{Ignore}
 
+
+\section{Conditional output}
+When test
+This should appear
+
+This is latex text
+
 \section{Erudite syntax}
 \subsection{Subsection}
 \subsection{Subsubsection}
+
 \subsection{Verbatim}
 \begin{verbatim}
 This is in verbatim
 \end{verbatim}
+
 \subsection{Code}
 \begin{code}
 (defun hello-world ()
 (print "Hello world"))
 \end{code}
+
 \subsection{List}
 \begin{itemize}
 \item First item
 \item Second item
 \end{itemize}
+
 \subsection{Emphasis}
 \emph{This is emphasized}
 
 \textbf{This is in bold}
 
 \textit{This is in italics}
+
 \subsection{Inline verbatim}
 This is in \verb|inline verbatim|
+
 \subsection{Link}
 \href{https://github.com/mmontone/erudite}{Erudite}
+
 \subsection{Reference}
 \hyperref[hello-world]{hello-world}
+
 \subsection{Label and index}
 \label{label-test}
 \index{label-test}
