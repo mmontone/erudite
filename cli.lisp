@@ -71,12 +71,12 @@ The command line is implemented via the @emph{com.dvl.clon} library.
 	:description "The output file. If none is used, result is printed to stdout")
   (enum :long-name "output-type"
 	:argument-name "OUTPUT-TYPE"
-	:enum (list :latex :sphinx)
+	:enum (list :latex :sphinx :markdown)
 	:default-value :latex
 	:description "The output type. One of 'latex', 'sphinx'")
   (enum :long-name "syntax"
 	:argument-name "SYNTAX"
-	:enum (list :erudite :latex :sphinx)
+	:enum (list :erudite :latex :sphinx :markdown)
 	:default-value :erudite
 	:description "The syntax used in source files. One of 'latex', 'sphinx', 'erudite'")
   (stropt :long-name "author"
