@@ -12,3 +12,10 @@
 /doc/erudite.ilg
 /doc/erudite.ind
 /doc/sphinx/_build
+/test/output.aux
+/test/output.idx
+/test/output.ilg
+/test/output.ind
+/test/output.log
+/test/output.out
+/test/output.toc

@@ -1,0 +1,153 @@
+\documentclass[11pt,pdflatex,makeidx]{scrbook}   % Book class in 11 points
+\usepackage[margin=0.5in]{geometry}
+\usepackage{color}
+\usepackage{makeidx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{courier}
+\lstloadlanguages{Lisp}
+\lstset{frame=none,language=Lisp,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{black}\bfseries,
+  stringstyle=\ttfamily,
+  showstringspaces=false,breaklines}
+\lstnewenvironment{code}{}{}
+\parindent0pt  \parskip10pt             % make block paragraphs
+\raggedright                            % do not right justify
+% Note that book class by default is formatted to be printed back-to-back.
+\makeindex
+\begin{document}                        % End of preamble, start of text.
+\title{\bf Erudite output test}
+
+
+\author{Mariano Montone}
+
+\date{\today}                           %   Use current date.
+\frontmatter                            % only in book class (roman page #s)
+\maketitle                              % Print title page.
+\tableofcontents                        % Print table of contents
+\mainmatter                             % only in book class (arabic page #s)
+\long\def\ignore#1{}
+
+\section{Introduction}
+
+This is a test of Erudite output rendering, commands and syntax elements
+
+\section{Chunks}
+
+This is a good chunk
+\begin{code}
+<<<chunk1>>>
+\end{code}
+
+This is a good chunk
+\begin{code}
+<<<chunk2>>>
+\end{code}
+This is the chunk:
+\begin{code}
+<<chunk2>>=
+(+ 1 1)
+
+\end{code}
+
+\begin{code}
+<<chunk4>>=
+(print "Start")
+
+\end{code}
+The end
+\begin{code}
+<<<chunk4>>>
+\end{code}
+
+This is the factorial function:
+\index{factorial}
+\label{factorial}
+
+\begin{code}
+(defun factorial (n)
+  (if (<= n 1)
+<<<base-case>>>
+<<<recursive-case>>>
+      ))
+
+\end{code}
+The base case is simple, just check for \verb|n=1| less:
+\begin{code}
+<<base-case>>=
+      1
+
+\end{code}
+The recursive step is \verb|n x n - 1|:
+\begin{code}
+<<recursive-case>>=
+      (* n (factorial (1- n)))
+
+\end{code}
+
+\section{Extracts}
+
+Extract test
+This has been extracted
+\begin{code}
+(+ 1 2)
+\end{code}
+
+Extract 3
+
+Start
+End
+
+\section{Includes}
+
+Include test
+This is includeA
+\begin{code}
+(print "include A")
+(print "Include")
+\end{code}
+This is includeB
+\begin{code}
+(print "include B")
+\end{code}
+
+\section{Ignore}
+
+\section{Erudite syntax}
+\subsection{Subsection}
+\subsection{Subsubsection}
+\subsection{Verbatim}
+\begin{verbatim}
+This is in verbatim
+\end{verbatim}
+\subsection{Code}
+\begin{code}
+(defun hello-world ()
+(print "Hello world"))
+\end{code}
+\subsection{List}
+\begin{itemize}
+\item First item
+\item Second item
+\end{itemize}
+\subsection{Emphasis}
+\emph{This is emphasized}
+
+\textbf{This is in bold}
+
+\textit{This is in italics}
+\subsection{Inline verbatim}
+This is in \verb|inline verbatim|
+\subsection{Link}
+\href{https://github.com/mmontone/erudite}{Erudite}
+\subsection{Reference}
+\hyperref[hello-world]{hello-world}
+\subsection{Label and index}
+\label{label-test}
+\index{label-test}
+                             % ignore macro
+\chapter{Index}
+\printindex
+\end{document}

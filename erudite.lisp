@@ -98,7 +98,8 @@ In the first pass, @emph{include} directives are expanded to be able to process 
 				(t (error "No base path for include. This should not have happened")))))
 		(log:debug "Including ~A" pathname)
 		;; Expand the included file source into output
-		(write-string (file-to-string pathname) output)
+		(with-input-from-string (source (file-to-string pathname))
+		  (write-string (expand-includes source) output))
 		)))
 	   (t
 	    (write-string line output)
