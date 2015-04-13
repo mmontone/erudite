@@ -351,3 +351,36 @@ This should appear
       (erudite::process-file-to-string (test-file "if.lisp")))
     "This is other output text
 ")))
+
+;; @end extract
+
+(test implicit/explicit-doc-test
+  (is (equalp
+       (let ((erudite::*implicit-documentation* t))
+	 (erudite::process-file-to-string (test-file "implicit.lisp")))
+       "This is implicit doc
+\\begin{code}
+(print \"Hello world\")
+\\end{code}
+End
+"))
+(is (equalp
+     (let ((erudite::*implicit-documentation* nil))
+       (erudite::process-file-to-string (test-file "implicit.lisp")))
+     "\\begin{code}
+(print \"Hello world\")
+\\end{code}
+"))
+(is (equalp
+     (let ((erudite::*implicit-documentation* nil))
+       (erudite::process-file-to-string (test-file "explicit.lisp")))
+     "\\begin{code}
+(print \"Hello world\")
+\\end{code}
+This is an explicit comment
+Hello world
+\\begin{code}
+(print \"Bye\")
+\\end{code}
+")))
+

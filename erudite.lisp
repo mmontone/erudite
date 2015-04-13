@@ -265,7 +265,20 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
                    (if line
                        (maybe-process-command line input output #'process-cont)
                        (funcall cont :output output))))))
-      (%process-fragment))))
+      (if *implicit-documentation*
+	  (%process-fragment)
+	  (if (equalp (search "@doc" (remove #\ (second fragment)))
+		      0)
+	      (let ((stripped-doc (string-left-trim 
+				   (list #\ 
+					 #\newline
+					 #\tab)
+				   (ppcre:regex-replace "@doc" 
+							(second fragment)
+							""))))
+		(with-input-from-string (input stripped-doc)
+		  (%process-fragment :input input)))
+	      (funcall cont :output output))))))
 
 (defmethod maybe-process-command (line input output cont)
   "Process a top-level command"
