@@ -2,3 +2,5 @@
 - @doc - At the beggining of a comment. To parse as literate doc if implicit comments are disabled.
 - @picture - For inserting pictures
 - @cite and @citation - For citations
+- Use cl-launch in Makefiles for a portable build, with optional LISP env var option, like:
+     $ LISP=CCL make
