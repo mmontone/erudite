@@ -237,7 +237,8 @@ When splitting the source in fragments, we can parse either a long comment, a sh
 ;;; First, add the first comment line
 	     (register-groups-bind (comment-line) 
 		 ("^\\s*\\#\\|\\s+@doc\\s+(.+)" line)
-	       (write-string comment-line s))
+	       (when comment-line
+		 (write-string comment-line s)))
 	     ; While there are lines without `|#` or `@end doc`, add them to the comment source
 	     (loop
 		:for line := (read-line stream nil)
@@ -279,7 +280,7 @@ When splitting the source in fragments, we can parse either a long comment, a sh
 	(list :doc comment))))
 
 (defun parse-short-comment-explicit (line stream)
-  (let ((regex (format nil "^\\s*~A\\s+@doc\\s+(.+)" 
+  (let ((regex (format nil "^\\s*~A\\s+@doc\\s*(.*)" 
 		       *short-comments-prefix*)))
     (cond 
       ((and *parsing-doc*

@@ -390,3 +390,15 @@ This appears as doc
 \\end{code}
 ")))
 
+(test explicit-code
+  (is (equalp
+       (let ((erudite:*implicit-code* nil)
+	     (erudite:*code-indexing* nil))
+	 (erudite::process-file-to-string (test-file "explicit-code.lisp")))
+       "Explicit code test
+This is the code:
+\\begin{code}
+(defun hello-world ()
+  (print \"hello world\"))
+\\end{code}
+")))

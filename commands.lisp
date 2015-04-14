@@ -237,15 +237,56 @@
 	    (pop *output-condition*)
 	    (funcall cont)))
 
+(defvar *in-code-section* nil)
+
+(define-command begin-code
+  (:match (line)
+    (and (not *implicit-code*)
+	 (scan "@code" line)))
+  (:process (line input output cont)
+	    (setf *in-code-section* t)
+	    (funcall cont)))
+
+(define-command end-code
+  (:match (line)
+    (and (not *implicit-code*)
+	 (scan "@end code" line)))
+  (:process (line input output cont)
+	    (setf *in-code-section* nil)
+	    (funcall cont)))
+
+;; (defvar *in-doc-section* nil)
+
+;; (define-command begin-doc
+;;   (:match (line)
+;;     (and (not *implicit-documentation*)
+;; 	 (scan "@doc" line)))
+;;   (:process (line input output cont)
+;; 	    (setf *in-doc-section* t)
+;; 	    (funcall cont)))
+
+;; (define-command end-doc
+;;   (:match (line)
+;;     (and (not *implicit-documentation*)
+;; 	 (scan "@end doc" line)))
+;;   (:process (line input output cont)
+;; 	    (setf *in-doc-section* nil)
+;; 	    (funcall cont)))
+
 (defmethod process-doc :around (syntax output-type line stream cont)
   (if (or *ignore*
-	  (not (every #'identity *output-condition*)))
+	  (not (every #'identity *output-condition*))
+	  #+nil(and (not *implicit-documentation*)
+		    (not *in-doc-section*)))
       (funcall cont)
       (call-next-method)))
 
 (defmethod process-fragment :around ((type (eql :code)) fragment output cont)
+  #+nil(setf *in-doc-section* nil)
   (if (or *ignore*
-	  (not (every #'identity *output-condition*)))
+	  (not (every #'identity *output-condition*))
+	  (and (not *implicit-code*)
+	       (not *in-code-section*)))		    
       (funcall cont)
       (call-next-method)))
 
