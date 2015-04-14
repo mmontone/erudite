@@ -20,6 +20,10 @@ sphinx-html: sphinx
 erudite.md:
 	erudite -o erudite.md --output-type=markdown ../erudite.lisp
 
+markdown: erudite.md
+
+pdf: erudite.pdf
+
 all: erudite.pdf sphinx-pdf erudite.md
 
 clean:
