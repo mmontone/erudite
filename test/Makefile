@@ -1,16 +1,51 @@
-run:
-	sbcl --disable-debugger --eval '(asdf:test-system :erudite)' --quit
+.PHONY: all test clean
 
-latex:
+SBCL=$(shell which sbcl)
+ECL=$(shell which ecl)
+CLISP=$(shell which clisp)
+CCL=$(shell which ccl)
+
+ifeq ($(LISP),SBCL)		# if compiler is sbcl
+  TEST = $(SBCL) --disable-debugger --eval 
+endif
+
+ifeq ($(LISP),ECL)		# else if compiler is ecl
+  TEST = $(ECL) -q -eval
+endif
+
+ifeq ($(LISP),CLISP)		# else if compiler is clisp
+  TEST = $(CLISP) -x 
+endif
+
+ifeq ($(LISP),CCL)		# else if compiler is ccl
+  TEST = $(CCL) -e
+endif
+
+ifndef LISP
+  TEST = $(SBCL) --disable-debugger --eval 
+endif
+
+test:
+	$(TEST) '(progn (asdf:test-system :erudite)(uiop/image:quit))'
+
+output.tex:
 	erudite -o output.tex --output-type=latex output.lisp
 
-sphinx:
+output.rst:
 	erudite -o output.rst --output-type=sphinx output.lisp
 
-markdown:
+output.md:
 	erudite -o output.md --output-type=markdown output.lisp
 
-pdf: latex
+output.pdf: output.tex
 	pdflatex output.tex
 	makeindex output.idx
 	pdflatex output.tex
+
+all: output.pdf output.md output.rst
+
+clean:
+	rm output.tex
+	rm output.md
+	rm output.rst
+	rm output.pdf	
