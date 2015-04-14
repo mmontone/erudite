@@ -1,8 +1,5 @@
 .PHONY: all clean sphinx
 
-help:   ## Show this help.
-	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
-
 erudite.pdf: erudite.tex
 	pdflatex erudite.tex
 	makeindex erudite.idx
@@ -34,3 +31,5 @@ clean: ## Remove generated documentation files
 	rm -f erudite.md
 	rm -f erudite.pdf
 
+help:   ## Show this help.
+	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'

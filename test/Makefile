@@ -25,9 +25,6 @@ ifndef LISP
   TEST = $(SBCL) --disable-debugger --eval 
 endif
 
-help:   ## Show this help.
-	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
-
 test: ## Run Erudite tests
 	$(TEST) '(progn (asdf:test-system :erudite)(uiop/image:quit))'
 
@@ -59,4 +56,7 @@ clean: ## Remove generated files
 	rm -f output.tex
 	rm -f output.md
 	rm -f output.rst
-	rm -f output.pdf	
+	rm -f output.pdf
+
+help:   ## Show this help.
+	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'

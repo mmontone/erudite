@@ -30,9 +30,6 @@ ifndef LISP
   TEST = $(SBCL) --disable-debugger --eval 
 endif
 
-help:   ## Show this help.
-	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
-
 erudite: ## Build erudite executable
 	$(BUILD)
 
@@ -46,3 +43,6 @@ clean:  ## Clean
 	rm erudite
 
 all: erudite ## Build erudite
+
+help:   ## Show this help.
+	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
