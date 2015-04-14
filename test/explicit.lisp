@@ -1,5 +1,7 @@
-;; This is implicit and does not appear
+;; This is implicit and does not appear as doc
 (print "Hello world")
 ;; @doc This is an explicit comment
-;; Hello world
-(print "Bye")
+;; This appears as doc
+(defun bye ()
+  ;; This comment goes in the code
+  (print "Bye"))

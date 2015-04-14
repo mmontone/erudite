@@ -146,8 +146,11 @@ After includes have been expanded, it is time to extract chunks.
 Once both includes have been expanded, and chunks have been pre proccessed, the resulting output with literate code is parsed into @emph{fragments}. Fragments can be of type @it{documentation} or type @it{code}. @it{documentation} is the text that appears in Common Lisp comments. @it{code} fragments are the rest. This is done via the @ref{split-file-source} function.
 |#
 
+(defvar *parsing-doc* nil)
+
 (defun split-file-source (str)
   "Splits a file source in docs and code"
+  (setf *parsing-doc* nil)
   (with-input-from-string (stream str)
     (append-source-fragments
      (loop
@@ -155,6 +158,9 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
        :while line
        :collect
        (parse-line line stream)))))
+#|
+When splitting the source in fragments, we can parse either a long comment, a short comment, or lisp code:
+|#
 
 (defun parse-line (line stream)
   (or
@@ -162,12 +168,21 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
    (parse-short-comment line stream)
    (parse-code line stream)))
 
+
+
+;; Depending on the value of @ref{*implicit-comments*} we treat the comment as documentation or code
+
 (defun parse-long-comment (line stream)
   "Parse a comment between #| and |#"
+  (if *implicit-documentation*
+      (parse-long-comment-implicit line stream)
+      (parse-long-comment-explicit line stream)))
 
+(defun parse-long-comment-implicit (line stream)
   ;; TODO: this does not work for long comments in one line
   (when (equalp (search "#|" (string-left-trim (list #\  #\tab) line))
                 0)
+    (setf *parsing-doc* t)
     ;; We've found a long comment
     ;; Extract the comment source
     (let ((comment
@@ -175,11 +190,11 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
              ;;; First, add the first comment line
               (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
                 (write-string comment-line s))
-              ;; While there are lines without \verb'|#', add them to the comment source
-              (loop
-                :for line := (read-line stream nil)
-                :while (and line (not (search "|#" line)))
-                :do
+              ;; While there are lines without @verb{|#}, add them to the comment source
+	      (loop
+		 :for line := (read-line stream nil)
+		 :while (and line (not (search "|#" line)))
+		 :do
                    (terpri s)
                    (write-string line s)
                 :finally
@@ -191,24 +206,78 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
                        (error "EOF: Could not complete comment parsing"))))))
       (list :doc comment))))
 
+(defun parse-long-comment-explicit (line stream)
+  ;; TODO: this does not work for long comments in one line
+  (when (scan "^\\s*\\#\\|\\s+@doc" line)
+    ;; We've found a long comment explicit comment
+    (setf *parsing-doc* t)
+    ;; Extract the comment source
+    (let ((comment
+	   (with-output-to-string (s)
+;;; First, add the first comment line
+	     (register-groups-bind (comment-line) 
+		 ("^\\s*\\#\\|\\s+@doc\\s+(.+)" line)
+	       (write-string comment-line s))
+	     ;; While there are lines without @verb{|#} or @verb{@end doc}, add them to the comment source
+	     (loop
+		:for line := (read-line stream nil)
+		:while (and line (not (or (search "|#" line)
+					  (search "@end doc" line))))
+		:do
+		(terpri s)
+		(write-string line s)
+                :finally
+		;; Finally, extract the last comment line
+		(if line
+		    (when (not (search "@end doc" line))
+		      (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
+			(when comment-line
+			  (write-string comment-line s))))
+		    (error "EOF: Could not complete comment parsing"))))))
+      (list :doc comment))))
+
 (defun parse-short-comment (line stream)
+  (if *implicit-documentation*
+      (parse-short-comment-implicit line stream)
+      (parse-short-comment-explicit line stream)))
+
+(defun parse-short-comment-implicit (line stream)
   (when (equalp
          (search *short-comments-prefix*
-                 (string-left-trim (list #\  #\tab)
+                 (string-left-trim (list #\space #\tab)
                                    line))
          0)
     ;; A short comment was found
+    (setf *parsing-doc* t)
     (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
            (comment
-             (with-output-to-string (s)
-               (register-groups-bind (comment-line) (comment-regex line)
-                 (write-string
-                  (string-left-trim (list #\; #\ )
-                                    comment-line)
-                  s)))))
-      (list :doc comment))))
+	    (register-groups-bind (comment-line) (comment-regex line)
+	      (string-left-trim (list #\; #\space)
+				comment-line))))
+	(list :doc comment))))
+
+(defun parse-short-comment-explicit (line stream)
+  (let ((regex (format nil "^\\s*~A\\s+@doc\\s+(.+)" 
+		       *short-comments-prefix*)))
+    (cond 
+      ((and *parsing-doc*
+	    (search *short-comments-prefix* 
+		    (string-left-trim (list #\space #\tab)
+				      line)))
+       
+       (list :doc (string-left-trim (list #\; #\space)
+				    line)))
+      ((ppcre:scan regex line)
+       ;; A short comment was found
+       (setf *parsing-doc* t)
+       (let ((comment
+	      (register-groups-bind (comment-line) (regex line)
+		(string-left-trim (list #\; #\space)
+				  comment-line))))
+	 (list :doc comment))))))
 
 (defun parse-code (line stream)
+  (setf *parsing-doc* nil)
   (list :code line))
 
 (defun append-source-fragments (fragments)
@@ -265,20 +334,7 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
                    (if line
                        (maybe-process-command line input output #'process-cont)
                        (funcall cont :output output))))))
-      (if *implicit-documentation*
-	  (%process-fragment)
-	  (if (equalp (search "@doc" (remove #\ (second fragment)))
-		      0)
-	      (let ((stripped-doc (string-left-trim 
-				   (list #\ 
-					 #\newline
-					 #\tab)
-				   (ppcre:regex-replace "@doc" 
-							(second fragment)
-							""))))
-		(with-input-from-string (input stripped-doc)
-		  (%process-fragment :input input)))
-	      (funcall cont :output output))))))
+      (%process-fragment))))
 
 (defmethod maybe-process-command (line input output cont)
   "Process a top-level command"

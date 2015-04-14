@@ -368,19 +368,25 @@ End
      (let ((erudite::*implicit-documentation* nil))
        (erudite::process-file-to-string (test-file "implicit.lisp")))
      "\\begin{code}
+;; This is implicit doc
 (print \"Hello world\")
+;; End
 \\end{code}
 "))
 (is (equalp
-     (let ((erudite::*implicit-documentation* nil))
+     (let ((erudite::*implicit-documentation* nil)
+	   (erudite::*code-indexing* nil))
        (erudite::process-file-to-string (test-file "explicit.lisp")))
      "\\begin{code}
+;; This is implicit and does not appear as doc
 (print \"Hello world\")
 \\end{code}
 This is an explicit comment
-Hello world
+This appears as doc
 \\begin{code}
-(print \"Bye\")
+(defun bye ()
+  ;; This comment goes in the code
+  (print \"Bye\"))
 \\end{code}
 ")))
 
