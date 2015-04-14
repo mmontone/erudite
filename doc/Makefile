@@ -1,22 +1,29 @@
-latex-pdf: latex
+.PHONY: all clean sphinx
+
+erudite.pdf: erudite.tex
 	pdflatex erudite.tex
 	makeindex erudite.idx
 	pdflatex erudite.tex
 
-latex:
-	sbcl --disable-debugger --load make.lisp --eval '(erudite.doc:make-latex)' --quit
+erudite.tex:
+	erudite -o erudite.tex --output-type=latex ../erudite.lisp
 
-_sphinx:
-	sbcl --disable-debugger --load make.lisp --eval '(erudite.doc:make-sphinx)' --quit
+sphinx:
+	erudite -o sphinx/index.rst --output-type=sphinx ../erudite.lisp
 
-sphinx-pdf: _sphinx
+sphinx-pdf: sphinx
 	cd sphinx; make latexpdf
 
-sphinx-html: _sphinx
+sphinx-html: sphinx
 	cd sphinx; make html
 
-markdown:
-	sbcl --disable-debugger --load make.lisp --eval '(erudite.doc:make-markdown)' --quit
+erudite.md:
+	erudite -o erudite.md --output-type=markdown ../erudite.lisp
 
-all: latex-pdf sphinx-pdf markdown
+all: erudite.pdf sphinx-pdf erudite.md
+
+clean:
+	rm erudite.tex
+	rm erudite.md
+	rm erudite.pdf
 
