@@ -25,7 +25,10 @@ ifndef LISP
   TEST = $(SBCL) --disable-debugger --eval 
 endif
 
-test:
+help:   ## Show this help.
+	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
+
+test: ## Run Erudite tests
 	$(TEST) '(progn (asdf:test-system :erudite)(uiop/image:quit))'
 
 output.tex:
@@ -42,9 +45,17 @@ output.pdf: output.tex
 	makeindex output.idx
 	pdflatex output.tex
 
-all: output.pdf output.md output.rst
+latex: output.tex ## Create Latex output test
 
-clean:
+pdf: output.pdf ## Create PDF output test
+
+markdown: output.md ## Create Markdown output test
+
+rst: output.rst ## Create Sphinx output test
+
+all: output.pdf output.md output.rst ## Create output test in all formats
+
+clean: ## Remove generated files
 	rm -f output.tex
 	rm -f output.md
 	rm -f output.rst

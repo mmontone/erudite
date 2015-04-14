@@ -30,16 +30,19 @@ ifndef LISP
   TEST = $(SBCL) --disable-debugger --eval 
 endif
 
-erudite:
+help:   ## Show this help.
+	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
+
+erudite: ## Build erudite executable
 	$(BUILD)
 
-install:
+install: ## Install erudite executable in /usr/local/bin
 	cp erudite /usr/local/bin
 
-test:
+test:   ## Run tests
 	$(TEST) '(progn (asdf:test-system :erudite)(uiop/image:quit))'
 
-clean:
+clean:  ## Clean
 	rm erudite
 
-all: erudite
+all: erudite ## Build erudite
