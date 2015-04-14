@@ -190,7 +190,7 @@ When splitting the source in fragments, we can parse either a long comment, a sh
              ;;; First, add the first comment line
               (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
                 (write-string comment-line s))
-              ;; While there are lines without @verb{|#}, add them to the comment source
+              ; While there are lines without |#, add them to the comment source
 	      (loop
 		 :for line := (read-line stream nil)
 		 :while (and line (not (search "|#" line)))
@@ -218,7 +218,7 @@ When splitting the source in fragments, we can parse either a long comment, a sh
 	     (register-groups-bind (comment-line) 
 		 ("^\\s*\\#\\|\\s+@doc\\s+(.+)" line)
 	       (write-string comment-line s))
-	     ;; While there are lines without @verb{|#} or @verb{@end doc}, add them to the comment source
+	     ; While there are lines without `|#` or `@end doc`, add them to the comment source
 	     (loop
 		:for line := (read-line stream nil)
 		:while (and line (not (or (search "|#" line)
