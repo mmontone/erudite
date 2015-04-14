@@ -27,7 +27,7 @@ pdf: erudite.pdf
 all: erudite.pdf sphinx-pdf erudite.md
 
 clean:
-	rm erudite.tex
-	rm erudite.md
-	rm erudite.pdf
+	rm -f erudite.tex
+	rm -f erudite.md
+	rm -f erudite.pdf
 

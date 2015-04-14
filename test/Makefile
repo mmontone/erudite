@@ -45,7 +45,7 @@ output.pdf: output.tex
 all: output.pdf output.md output.rst
 
 clean:
-	rm output.tex
-	rm output.md
-	rm output.rst
-	rm output.pdf	
+	rm -f output.tex
+	rm -f output.md
+	rm -f output.rst
+	rm -f output.pdf	
