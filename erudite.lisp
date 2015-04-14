@@ -271,9 +271,11 @@ When splitting the source in fragments, we can parse either a long comment, a sh
     (setf *parsing-doc* t)
     (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
            (comment
-	    (register-groups-bind (comment-line) (comment-regex line)
-	      (string-left-trim (list #\; #\space)
-				comment-line))))
+	    (or 
+	     (register-groups-bind (comment-line) (comment-regex line)
+	       (string-left-trim (list #\; #\space)
+				 comment-line))
+	     "")))
 	(list :doc comment))))
 
 (defun parse-short-comment-explicit (line stream)
@@ -291,9 +293,11 @@ When splitting the source in fragments, we can parse either a long comment, a sh
        ;; A short comment was found
        (setf *parsing-doc* t)
        (let ((comment
-	      (register-groups-bind (comment-line) (regex line)
-		(string-left-trim (list #\; #\space)
-				  comment-line))))
+	      (or 
+	       (register-groups-bind (comment-line) (regex line)
+		 (string-left-trim (list #\; #\space)
+				   comment-line))
+	       "")))
 	 (list :doc comment))))))
 
 (defun parse-code (line stream)
