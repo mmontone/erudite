@@ -1,3 +1,5 @@
+.PHONY: all test clean
+
 SBCL=$(shell which sbcl)
 ECL=$(shell which ecl)
 CLISP=$(shell which clisp)
@@ -24,15 +26,20 @@ ifeq ($(LISP),CCL)		# else if compiler is ccl
 endif
 
 ifndef LISP
-  COMMAND = $(SBCL) --noinform --disable-debugger --load cli.lisp
+  BUILD = $(SBCL) --noinform --disable-debugger --load cli.lisp
   TEST = $(SBCL) --disable-debugger --eval 
 endif
 
-build:
+erudite:
 	$(BUILD)
 
 install:
 	cp erudite /usr/local/bin
 
-tests:
+test:
 	$(TEST) '(progn (asdf:test-system :erudite)(uiop/image:quit))'
+
+clean:
+	rm erudite
+
+all: erudite
