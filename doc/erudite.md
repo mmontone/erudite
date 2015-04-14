@@ -27,6 +27,34 @@ Some of its salient features are:
 
 
 
+# Literate Programming
+
+
+
+## Concept
+
+
+Literate programming is an approach to programming introduced by Donald Knuth in which a program is given as an explanation of the program logic in a natural language, such as English, interspersed with snippets of macros and traditional source code, from which a compilable source code can be generated.
+
+The literate programming paradigm, as conceived by Knuth, represents a move away from writing programs in the manner and order imposed by the computer, and instead enables programmers to develop programs in the order demanded by the logic and flow of their thoughts. Literate programs are written as an uninterrupted exposition of logic in an ordinary human language, much like the text of an essay, in which macros are included to hide abstractions and traditional source code.
+
+Literate programming tools are used to obtain two representations from a literate source file: one suitable for further compilation or execution by a computer, the "tangled" code, and another for viewing as formatted documentation, which is said to be "woven" from the literate source. While the first generation of literate programming tools were computer language-specific, the later ones are language-agnostic and exist above the programming languages.
+
+
+## Advantages
+
+
+According to Knuth, literate programming provides higher-quality programs, since it forces programmers to explicitly state the thoughts behind the program, making poorly thought-out design decisions more obvious. Knuth also claims that literate programming provides a first-rate documentation system, which is not an add-on, but is grown naturally in the process of exposition of one's thoughts during a program's creation. The resulting documentation allows authors to restart their own thought processes at any later time, and allows other programmers to understand the construction of the program more easily. This differs from traditional documentation, in which a programmer is presented with source code that follows a compiler-imposed order, and must decipher the thought process behind the program from the code and its associated comments. The meta-language capabilities of literate programming are also claimed to facilitate thinking, giving a higher "bird's eye view" of the code and increasing the number of concepts the mind can successfully retain and process. Applicability of the concept to programming on a large scale, that of commercial-grade programs, is proven by an edition of TeX code as a literate program.
+
+
+## Contrast with document generation
+
+
+Literate programming is very often misunderstood to refer only to formatted documentation produced from a common file with both source code and comments – which is properly called documentation generation – or to voluminous commentaries included with code. This is backwards: well-documented code or documentation extracted from code follows the structure of the code, with documentation embedded in the code; in literate programming code is embedded in documentation, with the code following the structure of the documentation.
+
+This misconception has led to claims that comment-extraction tools, such as the Perl Plain Old Documentation or Java Javadoc systems, are "literate programming tools". However, because these tools do not implement the "web of abstract concepts" hiding behind the system of natural-language macros, or provide an ability to change the order of the source code from a machine-imposed sequence to one convenient to the human mind, they cannot properly be called literate programming tools in the sense intended by Knuth.
+
+
 # Other systems
 
 
@@ -234,8 +262,11 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
 
 ```lisp
 
+(defvar *parsing-doc* nil)
+
 (defun split-file-source (str)
   "Splits a file source in docs and code"
+  (setf *parsing-doc* nil)
   (with-input-from-string (stream str)
     (append-source-fragments
      (loop
@@ -243,6 +274,11 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
        :while line
        :collect
        (parse-line line stream)))))
+```
+
+When splitting the source in fragments, we can parse either a long comment, a short comment, or lisp code:
+
+```lisp
 
 (defun parse-line (line stream)
   (or
@@ -250,15 +286,27 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
    (parse-short-comment line stream)
    (parse-code line stream)))
 
+
+
+```
+Depending on the value of *implicit-comments* we treat the comment as documentation or code
+
+```lisp
+
 (defun parse-long-comment (line stream)
   "Parse a comment between #| and |#"
+  (if *implicit-documentation*
+      (parse-long-comment-implicit line stream)
+      (parse-long-comment-explicit line stream)))
 
+(defun parse-long-comment-implicit (line stream)
 ```
 TODO: this does not work for long comments in one line
 
 ```lisp
   (when (equalp (search "#|" (string-left-trim (list #\  #\tab) line))
                 0)
+    (setf *parsing-doc* t)
 ```
 We've found a long comment
 Extract the comment source
@@ -272,14 +320,11 @@ First, add the first comment line
 ```lisp
               (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
                 (write-string comment-line s))
-```
-While there are lines without \verb'|#', add them to the comment source
-
-```lisp
-              (loop
-                :for line := (read-line stream nil)
-                :while (and line (not (search "|#" line)))
-                :do
+              ; While there are lines without |#, add them to the comment source
+	      (loop
+		 :for line := (read-line stream nil)
+		 :while (and line (not (search "|#" line)))
+		 :do
                    (terpri s)
                    (write-string line s)
                 :finally
@@ -294,27 +339,99 @@ Finally, extract the last comment line
                        (error "EOF: Could not complete comment parsing"))))))
       (list :doc comment))))
 
+(defun parse-long-comment-explicit (line stream)
+```
+TODO: this does not work for long comments in one line
+
+```lisp
+  (when (scan "^\\s*\\#\\|\\s+@doc" line)
+```
+We've found a long comment explicit comment
+
+```lisp
+    (setf *parsing-doc* t)
+```
+Extract the comment source
+
+```lisp
+    (let ((comment
+	   (with-output-to-string (s)
+```
+First, add the first comment line
+
+```lisp
+	     (register-groups-bind (comment-line) 
+		 ("^\\s*\\#\\|\\s+@doc\\s+(.+)" line)
+	       (write-string comment-line s))
+	     ; While there are lines without `|#` or `@end doc`, add them to the comment source
+	     (loop
+		:for line := (read-line stream nil)
+		:while (and line (not (or (search "|#" line)
+					  (search "@end doc" line))))
+		:do
+		(terpri s)
+		(write-string line s)
+                :finally
+```
+Finally, extract the last comment line
+
+```lisp
+		(if line
+		    (when (not (search "@end doc" line))
+		      (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
+			(when comment-line
+			  (write-string comment-line s))))
+		    (error "EOF: Could not complete comment parsing"))))))
+      (list :doc comment))))
+
 (defun parse-short-comment (line stream)
+  (if *implicit-documentation*
+      (parse-short-comment-implicit line stream)
+      (parse-short-comment-explicit line stream)))
+
+(defun parse-short-comment-implicit (line stream)
   (when (equalp
          (search *short-comments-prefix*
-                 (string-left-trim (list #\  #\tab)
+                 (string-left-trim (list #\space #\tab)
                                    line))
          0)
 ```
 A short comment was found
 
 ```lisp
+    (setf *parsing-doc* t)
     (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
            (comment
-             (with-output-to-string (s)
-               (register-groups-bind (comment-line) (comment-regex line)
-                 (write-string
-                  (string-left-trim (list #\; #\ )
-                                    comment-line)
-                  s)))))
-      (list :doc comment))))
+	    (register-groups-bind (comment-line) (comment-regex line)
+	      (string-left-trim (list #\; #\space)
+				comment-line))))
+	(list :doc comment))))
+
+(defun parse-short-comment-explicit (line stream)
+  (let ((regex (format nil "^\\s*~A\\s+@doc\\s+(.+)" 
+		       *short-comments-prefix*)))
+    (cond 
+      ((and *parsing-doc*
+	    (search *short-comments-prefix* 
+		    (string-left-trim (list #\space #\tab)
+				      line)))
+       
+       (list :doc (string-left-trim (list #\; #\space)
+				    line)))
+      ((ppcre:scan regex line)
+```
+A short comment was found
+
+```lisp
+       (setf *parsing-doc* t)
+       (let ((comment
+	      (register-groups-bind (comment-line) (regex line)
+		(string-left-trim (list #\; #\space)
+				  comment-line))))
+	 (list :doc comment))))))
 
 (defun parse-code (line stream)
+  (setf *parsing-doc* nil)
   (list :code line))
 
 (defun append-source-fragments (fragments)
@@ -1573,6 +1690,58 @@ Tests are run with run-tests
     "Hello
 \\begin{code}
 (print \"world\")
+\\end{code}
+")))
+
+```
+
+```lisp
+
+(test implicit/explicit-doc-test
+  (is (equalp
+       (let ((erudite::*implicit-documentation* t))
+	 (erudite::process-file-to-string (test-file "implicit.lisp")))
+       "This is implicit doc
+\\begin{code}
+(print \"Hello world\")
+\\end{code}
+End
+"))
+(is (equalp
+     (let ((erudite::*implicit-documentation* nil))
+       (erudite::process-file-to-string (test-file "implicit.lisp")))
+     "\\begin{code}
+```
+This is implicit doc
+
+```lisp
+(print \"Hello world\")
+```
+End
+
+```lisp
+\\end{code}
+"))
+(is (equalp
+     (let ((erudite::*implicit-documentation* nil)
+	   (erudite::*code-indexing* nil))
+       (erudite::process-file-to-string (test-file "explicit.lisp")))
+     "\\begin{code}
+```
+This is implicit and does not appear as doc
+
+```lisp
+(print \"Hello world\")
+\\end{code}
+This is an explicit comment
+This appears as doc
+\\begin{code}
+(defun bye ()
+```
+This comment goes in the code
+
+```lisp
+  (print \"Bye\"))
 \\end{code}
 ")))
 

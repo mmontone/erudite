@@ -28,6 +28,38 @@ Some of its salient features are:
 
 
 
+Literate Programming
+====================
+
+
+
+Concept
+-------
+
+
+Literate programming is an approach to programming introduced by Donald Knuth in which a program is given as an explanation of the program logic in a natural language, such as English, interspersed with snippets of macros and traditional source code, from which a compilable source code can be generated.
+
+The literate programming paradigm, as conceived by Knuth, represents a move away from writing programs in the manner and order imposed by the computer, and instead enables programmers to develop programs in the order demanded by the logic and flow of their thoughts. Literate programs are written as an uninterrupted exposition of logic in an ordinary human language, much like the text of an essay, in which macros are included to hide abstractions and traditional source code.
+
+Literate programming tools are used to obtain two representations from a literate source file: one suitable for further compilation or execution by a computer, the "tangled" code, and another for viewing as formatted documentation, which is said to be "woven" from the literate source. While the first generation of literate programming tools were computer language-specific, the later ones are language-agnostic and exist above the programming languages.
+
+
+Advantages
+----------
+
+
+According to Knuth, literate programming provides higher-quality programs, since it forces programmers to explicitly state the thoughts behind the program, making poorly thought-out design decisions more obvious. Knuth also claims that literate programming provides a first-rate documentation system, which is not an add-on, but is grown naturally in the process of exposition of one's thoughts during a program's creation. The resulting documentation allows authors to restart their own thought processes at any later time, and allows other programmers to understand the construction of the program more easily. This differs from traditional documentation, in which a programmer is presented with source code that follows a compiler-imposed order, and must decipher the thought process behind the program from the code and its associated comments. The meta-language capabilities of literate programming are also claimed to facilitate thinking, giving a higher "bird's eye view" of the code and increasing the number of concepts the mind can successfully retain and process. Applicability of the concept to programming on a large scale, that of commercial-grade programs, is proven by an edition of TeX code as a literate program.
+
+
+Contrast with document generation
+---------------------------------
+
+
+Literate programming is very often misunderstood to refer only to formatted documentation produced from a common file with both source code and comments – which is properly called documentation generation – or to voluminous commentaries included with code. This is backwards: well-documented code or documentation extracted from code follows the structure of the code, with documentation embedded in the code; in literate programming code is embedded in documentation, with the code following the structure of the documentation.
+
+This misconception has led to claims that comment-extraction tools, such as the Perl Plain Old Documentation or Java Javadoc systems, are "literate programming tools". However, because these tools do not implement the "web of abstract concepts" hiding behind the system of natural-language macros, or provide an ability to change the order of the source code from a machine-imposed sequence to one convenient to the human mind, they cannot properly be called literate programming tools in the sense intended by Knuth.
+
+
 Other systems
 =============
 
@@ -193,7 +225,8 @@ Expand the included file source into output
 
 .. code-block:: common-lisp
 
-     		(write-string (file-to-string pathname) output)
+     		(with-input-from-string (source (file-to-string pathname))
+     		  (write-string (expand-includes source) output))
      		)))
      	   (t
      	    (write-string line output)
@@ -250,8 +283,11 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
 .. code-block:: common-lisp
 
      
+     (defvar *parsing-doc* nil)
+     
      (defun split-file-source (str)
        "Splits a file source in docs and code"
+       (setf *parsing-doc* nil)
        (with-input-from-string (stream str)
          (append-source-fragments
           (loop
@@ -259,6 +295,13 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
             :while line
             :collect
             (parse-line line stream)))))
+
+
+
+When splitting the source in fragments, we can parse either a long comment, a short comment, or lisp code:
+
+.. code-block:: common-lisp
+
      
      (defun parse-line (line stream)
        (or
@@ -266,9 +309,22 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
         (parse-short-comment line stream)
         (parse-code line stream)))
      
+     
+     
+
+
+Depending on the value of :ref:`*implicit-comments*` we treat the comment as documentation or code
+
+.. code-block:: common-lisp
+
+     
      (defun parse-long-comment (line stream)
        "Parse a comment between #| and |#"
+       (if *implicit-documentation*
+           (parse-long-comment-implicit line stream)
+           (parse-long-comment-explicit line stream)))
      
+     (defun parse-long-comment-implicit (line stream)
 
 
 TODO: this does not work for long comments in one line
@@ -277,6 +333,7 @@ TODO: this does not work for long comments in one line
 
        (when (equalp (search "#|" (string-left-trim (list #\  #\tab) line))
                      0)
+         (setf *parsing-doc* t)
 
 
 We've found a long comment
@@ -294,16 +351,11 @@ First, add the first comment line
 
                    (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
                      (write-string comment-line s))
-
-
-While there are lines without \verb'|#', add them to the comment source
-
-.. code-block:: common-lisp
-
-                   (loop
-                     :for line := (read-line stream nil)
-                     :while (and line (not (search "|#" line)))
-                     :do
+                   ; While there are lines without |#, add them to the comment source
+     	      (loop
+     		 :for line := (read-line stream nil)
+     		 :while (and line (not (search "|#" line)))
+     		 :do
                         (terpri s)
                         (write-string line s)
                      :finally
@@ -320,10 +372,70 @@ Finally, extract the last comment line
                             (error "EOF: Could not complete comment parsing"))))))
            (list :doc comment))))
      
+     (defun parse-long-comment-explicit (line stream)
+
+
+TODO: this does not work for long comments in one line
+
+.. code-block:: common-lisp
+
+       (when (scan "^\\s*\\#\\|\\s+@doc" line)
+
+
+We've found a long comment explicit comment
+
+.. code-block:: common-lisp
+
+         (setf *parsing-doc* t)
+
+
+Extract the comment source
+
+.. code-block:: common-lisp
+
+         (let ((comment
+     	   (with-output-to-string (s)
+
+
+First, add the first comment line
+
+.. code-block:: common-lisp
+
+     	     (register-groups-bind (comment-line) 
+     		 ("^\\s*\\#\\|\\s+@doc\\s+(.+)" line)
+     	       (write-string comment-line s))
+     	     ; While there are lines without `|#` or `@end doc`, add them to the comment source
+     	     (loop
+     		:for line := (read-line stream nil)
+     		:while (and line (not (or (search "|#" line)
+     					  (search "@end doc" line))))
+     		:do
+     		(terpri s)
+     		(write-string line s)
+                     :finally
+
+
+Finally, extract the last comment line
+
+.. code-block:: common-lisp
+
+     		(if line
+     		    (when (not (search "@end doc" line))
+     		      (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
+     			(when comment-line
+     			  (write-string comment-line s))))
+     		    (error "EOF: Could not complete comment parsing"))))))
+           (list :doc comment))))
+     
      (defun parse-short-comment (line stream)
+       (if *implicit-documentation*
+           (parse-short-comment-implicit line stream)
+           (parse-short-comment-explicit line stream)))
+     
+     (defun parse-short-comment-implicit (line stream)
        (when (equalp
               (search *short-comments-prefix*
-                      (string-left-trim (list #\  #\tab)
+                      (string-left-trim (list #\space #\tab)
                                         line))
               0)
 
@@ -332,17 +444,41 @@ A short comment was found
 
 .. code-block:: common-lisp
 
+         (setf *parsing-doc* t)
          (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
                 (comment
-                  (with-output-to-string (s)
-                    (register-groups-bind (comment-line) (comment-regex line)
-                      (write-string
-                       (string-left-trim (list #\; #\ )
-                                         comment-line)
-                       s)))))
-           (list :doc comment))))
+     	    (register-groups-bind (comment-line) (comment-regex line)
+     	      (string-left-trim (list #\; #\space)
+     				comment-line))))
+     	(list :doc comment))))
+     
+     (defun parse-short-comment-explicit (line stream)
+       (let ((regex (format nil "^\\s*~A\\s+@doc\\s+(.+)" 
+     		       *short-comments-prefix*)))
+         (cond 
+           ((and *parsing-doc*
+     	    (search *short-comments-prefix* 
+     		    (string-left-trim (list #\space #\tab)
+     				      line)))
+            
+            (list :doc (string-left-trim (list #\; #\space)
+     				    line)))
+           ((ppcre:scan regex line)
+
+
+A short comment was found
+
+.. code-block:: common-lisp
+
+            (setf *parsing-doc* t)
+            (let ((comment
+     	      (register-groups-bind (comment-line) (regex line)
+     		(string-left-trim (list #\; #\space)
+     				  comment-line))))
+     	 (list :doc comment))))))
      
      (defun parse-code (line stream)
+       (setf *parsing-doc* nil)
        (list :code line))
      
      (defun append-source-fragments (fragments)
@@ -387,18 +523,37 @@ else, there's a new kind of fragment
      (defgeneric process-fragment (fragment-type fragment output cont))
      
      (defmethod process-fragment ((type (eql :code)) fragment output cont)
+
+
+Ensure that this is not an empty code fragment first
+
+.. code-block:: common-lisp
+
        (when (not 
      	 (zerop (length
      		 (remove #\  (remove #\newline (second fragment))))))
 
 
-Extract and output indexes first
+Extract and output indexes if it is enabled
 
 .. code-block:: common-lisp
 
-         (let ((indexes (extract-indexes (second fragment))))
-           (write-indexes indexes output *output-type*))
+         (when *code-indexing*
+           (let ((indexes (extract-indexes (second fragment))))
+     	(write-indexes indexes output *output-type*)))
+
+
+Finally write the code fragment to the output
+
+.. code-block:: common-lisp
+
          (write-code (second fragment) output *output-type*))
+
+
+Goon with the parsing
+
+.. code-block:: common-lisp
+
        (funcall cont))
      
      (defmethod process-fragment ((type (eql :doc)) fragment output cont)
@@ -751,7 +906,7 @@ LaTeX
                           (file-to-string (or template-pathname
                                               (asdf:system-relative-pathname
                                                :erudite
-                                               "latex/template.tex")))))
+                                               "resource/template.tex")))))
                (body (process-file-to-string files)))
            (write-string
             (funcall template (list :title (or title
@@ -917,12 +1072,12 @@ The command line is implemented via the *com.dvl.clon* library.
      	:description "The output file. If none is used, result is printed to stdout")
        (enum :long-name "output-type"
      	:argument-name "OUTPUT-TYPE"
-     	:enum (list :latex :sphinx)
+     	:enum (list :latex :sphinx :markdown)
      	:default-value :latex
      	:description "The output type. One of 'latex', 'sphinx'")
        (enum :long-name "syntax"
      	:argument-name "SYNTAX"
-     	:enum (list :erudite :latex :sphinx)
+     	:enum (list :erudite :latex :sphinx :markdown)
      	:default-value :erudite
      	:description "The syntax used in source files. One of 'latex', 'sphinx', 'erudite'")
        (stropt :long-name "author"
@@ -1055,6 +1210,44 @@ Output type
        (:process (line input output cont)
                  (register-groups-bind (output-type) ("@output-type\\s+(.+)" line)
                    (setf *output-type* (intern (string-upcase output-type) :keyword)))
+                 (funcall cont)))
+     
+
+
+
+Code indexing
+^^^^^^^^^^^^^
+
+
+.. code-block:: common-lisp
+
+     (define-command code-indexing
+       (:match (line)
+         (scan "@code-indexing\\s+(.+)" line))
+       (:process (line input output cont)
+                 (register-groups-bind (code-indexing) ("@code-indexing\\s+(.+)" line)
+                   (setf *code-indexing* 
+     		    (let ((*package* *erudite-package*))
+     		      (read-from-string code-indexing))))
+                 (funcall cont)))
+     
+
+
+
+Package
+^^^^^^^
+
+
+.. code-block:: common-lisp
+
+     (define-command package
+       (:match (line)
+         (scan "@package\\s+(.+)" line))
+       (:process (line input output cont)
+                 (register-groups-bind (package-name) ("@package\\s+(.+)" line)
+                   (setf *erudite-package* (find-package (intern 
+     						     (string-upcase package-name)
+     						     :keyword))))
                  (funcall cont)))
      
 
@@ -1218,18 +1411,80 @@ Ignore
                  (setf *ignore* nil)
                  (funcall cont)))
      
+
+
+
+Conditional output
+^^^^^^^^^^^^^^^^^^
+
+
+.. code-block:: common-lisp
+
+     
+     (defvar *output-condition* (list t))
+     
+     (define-command when
+       (:match (line)
+         (scan "@when\\s(.*)" line))
+       (:process (line input output cont)
+     	    (register-groups-bind (condition) ("@when\\s(.*)" line)
+     	      (let ((value (eval (let ((*package* *erudite-package*))
+     				   (read-from-string condition)))))
+     		(push value *output-condition*))
+     	      (funcall cont))))
+     
+     (define-command end-when
+       (:match (line)
+         (scan "@end when" line))
+       (:process (line input output cont)
+     	    (pop *output-condition*)
+     	    (funcall cont)))
+     
+     (define-command if
+       (:match (line)
+         (scan "@if\\s(.*)" line))
+       (:process (line input output cont)
+     	    (register-groups-bind (condition) ("@if\\s(.*)" line)
+     	      (let ((value (eval (let ((*package* *erudite-package*))
+     				   (read-from-string condition)))))
+     		(push value *output-condition*))
+     	      (funcall cont))))
+     
+     (define-command else
+       (:match (line)
+         (scan "@else" line))
+       (:process (line input output cont)
+     	    (let ((value (pop *output-condition*)))
+     		(push (not value) *output-condition*))
+     	    (funcall cont)))
+     
+     (define-command end-if
+       (:match (line)
+         (scan "@end if" line))
+       (:process (line input output cont)
+     	    (pop *output-condition*)
+     	    (funcall cont)))
+     
      (defmethod process-doc :around (syntax output-type line stream cont)
-       (if *ignore*
+       (if (or *ignore*
+     	  (not (every #'identity *output-condition*)))
            (funcall cont)
            (call-next-method)))
      
      (defmethod process-fragment :around ((type (eql :code)) fragment output cont)
-       (if *ignore*
+       (if (or *ignore*
+     	  (not (every #'identity *output-condition*)))
            (funcall cont)
            (call-next-method)))
      
      (defmethod maybe-process-command :around (line input output cont)
-       (if (and *ignore* (not (match-command 'end-ignore line)))
+       (if (or (and *ignore* (not (match-command 'end-ignore line)))
+     	  (and (not (every #'identity *output-condition*))
+     	       (not (or (match-command 'when line) 
+     			(match-command 'end-when line)
+     			(match-command 'else line)
+     			(match-command 'if line)
+     			(match-command 'end-if line)))))
            (funcall cont)
            (call-next-method)))
 
@@ -1632,6 +1887,68 @@ Tests are run with :ref:`run-tests`
          "Hello
      \\begin{code}
      (print \"world\")
+     \\end{code}
+     ")))
+     
+
+
+
+.. code-block:: common-lisp
+
+     
+     (test implicit/explicit-doc-test
+       (is (equalp
+            (let ((erudite::*implicit-documentation* t))
+     	 (erudite::process-file-to-string (test-file "implicit.lisp")))
+            "This is implicit doc
+     \\begin{code}
+     (print \"Hello world\")
+     \\end{code}
+     End
+     "))
+     (is (equalp
+          (let ((erudite::*implicit-documentation* nil))
+            (erudite::process-file-to-string (test-file "implicit.lisp")))
+          "\\begin{code}
+
+
+This is implicit doc
+
+.. code-block:: common-lisp
+
+     (print \"Hello world\")
+
+
+End
+
+.. code-block:: common-lisp
+
+     \\end{code}
+     "))
+     (is (equalp
+          (let ((erudite::*implicit-documentation* nil)
+     	   (erudite::*code-indexing* nil))
+            (erudite::process-file-to-string (test-file "explicit.lisp")))
+          "\\begin{code}
+
+
+This is implicit and does not appear as doc
+
+.. code-block:: common-lisp
+
+     (print \"Hello world\")
+     \\end{code}
+     This is an explicit comment
+     This appears as doc
+     \\begin{code}
+     (defun bye ()
+
+
+This comment goes in the code
+
+.. code-block:: common-lisp
+
+       (print \"Bye\"))
      \\end{code}
      ")))
      
