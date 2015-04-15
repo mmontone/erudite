@@ -194,7 +194,7 @@ When splitting the source in fragments, we can parse either a long comment, a sh
 
 (defun parse-long-comment (line stream)
   "Parse a comment between #| and |#"
-  (if *implicit-documentation*
+  (if *implicit-doc*
       (parse-long-comment-implicit line stream)
       (parse-long-comment-explicit line stream)))
 
@@ -258,7 +258,7 @@ When splitting the source in fragments, we can parse either a long comment, a sh
       (list :doc comment))))
 
 (defun parse-short-comment (line stream)
-  (if *implicit-documentation*
+  (if *implicit-doc*
       (parse-short-comment-implicit line stream)
       (parse-short-comment-explicit line stream)))
 
@@ -760,9 +760,12 @@ condition CONDITION is signaled in Erudite."
                 &rest args &key 
 			     (output-type *output-type*)
                              (syntax *syntax*)
-			     debug
-			     verbose
-			     (catch-errors-p t)
+			     (debug *debug*)
+			     (verbose *verbose*)
+			     (catch-errors-p *catch-errors-p*)
+			     (code-indexing *code-indexing*)
+			     (implicit-doc *implicit-doc*)
+			     (implicit-code *implicit-code*)
                              &allow-other-keys)
   "Processes literate lisp files and creates a document.
 
@@ -780,7 +783,9 @@ condition CONDITION is signaled in Erudite."
       (let ((*output-type* output-type)
             (*syntax* syntax)
 	    (*debug* debug)
-	    (*verbose* verbose))
+	    (*verbose* verbose)
+	    (*implicit-doc* implicit-doc)
+	    (*implicit-code* implicit-code))
 	(when *verbose*
 	  (log:config :info))
 	(when *debug*

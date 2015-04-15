@@ -13,7 +13,7 @@
 (defvar *debug* nil)
 (defvar *code-indexing* t)
 (defvar *erudite-package* (find-package :erudite))
-(defvar *implicit-documentation* t)
+(defvar *implicit-doc* t)
 (defvar *implicit-code* t)
 
 (log:config :off)

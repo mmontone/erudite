@@ -11,7 +11,7 @@
 	   #:*debug*
 	   #:*code-indexing*
 	   #:*erudite-package*
-	   #:*implicit-documentation*
+	   #:*implicit-doc*
 	   #:*implicit-code*)
   (:documentation "Erudite is a Literate Programming System for Common Lisp"))
 

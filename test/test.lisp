@@ -356,7 +356,7 @@ This should appear
 
 (test implicit/explicit-doc-test
   (is (equalp
-       (let ((erudite::*implicit-documentation* t))
+       (let ((erudite::*implicit-doc* t))
 	 (erudite::process-file-to-string (test-file "implicit.lisp")))
        "This is implicit doc
 \\begin{code}
@@ -365,7 +365,7 @@ This should appear
 End
 "))
 (is (equalp
-     (let ((erudite::*implicit-documentation* nil))
+     (let ((erudite::*implicit-doc* nil))
        (erudite::process-file-to-string (test-file "implicit.lisp")))
      "\\begin{code}
 ;; This is implicit doc
@@ -374,7 +374,7 @@ End
 \\end{code}
 "))
 (is (equalp
-     (let ((erudite::*implicit-documentation* nil)
+     (let ((erudite::*implicit-doc* nil)
 	   (erudite::*code-indexing* nil))
        (erudite::process-file-to-string (test-file "explicit.lisp")))
      "\\begin{code}

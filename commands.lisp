@@ -259,7 +259,7 @@
 
 ;; (define-command begin-doc
 ;;   (:match (line)
-;;     (and (not *implicit-documentation*)
+;;     (and (not *implicit-doc*)
 ;; 	 (scan "@doc" line)))
 ;;   (:process (line input output cont)
 ;; 	    (setf *in-doc-section* t)
@@ -267,7 +267,7 @@
 
 ;; (define-command end-doc
 ;;   (:match (line)
-;;     (and (not *implicit-documentation*)
+;;     (and (not *implicit-doc*)
 ;; 	 (scan "@end doc" line)))
 ;;   (:process (line input output cont)
 ;; 	    (setf *in-doc-section* nil)
@@ -276,7 +276,7 @@
 (defmethod process-doc :around (syntax output-type line stream cont)
   (if (or *ignore*
 	  (not (every #'identity *output-condition*))
-	  #+nil(and (not *implicit-documentation*)
+	  #+nil(and (not *implicit-doc*)
 		    (not *in-doc-section*)))
       (funcall cont)
       (call-next-method)))

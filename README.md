@@ -28,16 +28,25 @@ Erudite is a Literate Programming System for Common Lisp
   --version                   Print Erudite version
   -(+)v, --verbose[=yes/no]   Run in verbose mode
                               Fallback: yes
+                              Default: no
                               Environment: VERBOSE
   -(+)d, --debug[=on/off]     Turn debugging on or off.
                               Fallback: on
+                              Default: off
                               Environment: DEBUG
+  -(+)id, --implicit-doc[=yes/no] Treat all comments as documentation
+                              Fallback: yes
+                              Default: yes
+  -(+)ic, --implicit-code[=yes/no] Include all code in documentation
+                              Fallback: yes
+                              Default: yes
   -o, --output=OUTPUT         The output file. If none is used, result is 
                               printed to stdout
-  --output-type=OUTPUT-TYPE   The output type. One of 'latex', 'sphinx'
+  --output-type=OUTPUT-TYPE   The output type. One of 'latex', 
+                              'sphinx','markdown'
                               Default: latex
-  --syntax=SYNTAX             The syntax used in source files. One of 'latex', 
-                              'sphinx', 'erudite'
+  --syntax=SYNTAX             The syntax used in source files. One of 'erudite',
+                              'latex', 'sphinx', 'markdown'
                               Default: erudite
   --author=AUTHOR             The author to appear in the document
   --title=TITLE               The document title

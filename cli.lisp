@@ -14,16 +14,25 @@ Erudite is a Literate Programming System for Common Lisp
   --version                   Print Erudite version
   -(+)v, --verbose[=yes/no]   Run in verbose mode
                               Fallback: yes
+                              Default: no
                               Environment: VERBOSE
   -(+)d, --debug[=on/off]     Turn debugging on or off.
                               Fallback: on
+                              Default: off
                               Environment: DEBUG
+  -(+)id, --implicit-doc[=yes/no] Treat all comments as documentation
+                              Fallback: yes
+                              Default: yes
+  -(+)ic, --implicit-code[=yes/no] Include all code in documentation
+                              Fallback: yes
+                              Default: yes
   -o, --output=OUTPUT         The output file. If none is used, result is 
                               printed to stdout
-  --output-type=OUTPUT-TYPE   The output type. One of 'latex', 'sphinx'
+  --output-type=OUTPUT-TYPE   The output type. One of 'latex', 
+                              'sphinx','markdown'
                               Default: latex
-  --syntax=SYNTAX             The syntax used in source files. One of 'latex', 
-                              'sphinx', 'erudite'
+  --syntax=SYNTAX             The syntax used in source files. One of 'erudite',
+                              'latex', 'sphinx', 'markdown'
                               Default: erudite
   --author=AUTHOR             The author to appear in the document
   --title=TITLE               The document title
@@ -59,11 +68,19 @@ The command line is implemented via the @emph{com.dvl.clon} library.
         :description "Print Erudite version")
   (switch :short-name "v" :long-name "verbose"
           :description "Run in verbose mode"
+	  :default-value nil
           :env-var "VERBOSE")
   (switch :short-name "d" :long-name "debug"
           :description "Turn debugging on or off."
           :argument-style :on/off
+	  :default-value nil
           :env-var "DEBUG")
+  (switch :short-name "id" :long-name "implicit-doc"
+	  :description "Treat all comments as documentation"
+	  :default-value t)
+  (switch :short-name "ic" :long-name "implicit-code"
+	  :description "Include all code in documentation"
+	  :default-value t)
   (path :long-name "output"
         :short-name "o"
 	:argument-name "OUTPUT"
@@ -106,8 +123,16 @@ The command line is implemented via the @emph{com.dvl.clon} library.
 	   (syntax (clon:getopt :long-name "syntax"))
 	   (output (or (clon:getopt :long-name "output")
 		       t))
+	   (debug (clon:getopt :long-name "debug"))
+	   (verbose (clon:getopt :long-name "verbose"))
+	   (implicit-doc (clon:getopt :long-name "implicit-doc"))
+	   (implicit-code (clon:getopt :long-name "implicit-code"))
 	   (files (mapcar #'pathname (clon:remainder))))
        (erudite:erudite output files 
+			:debug debug
+			:verbose verbose
+			:implicit-doc implicit-doc
+			:implicit-code implicit-code
 			:title title
 			:author author
 			:output-type output-type
