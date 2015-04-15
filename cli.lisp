@@ -115,7 +115,7 @@ The command line is implemented via the @emph{com.dvl.clon} library.
 	 (not (clon:cmdline-p)))
      (clon:help))
     ((clon:getopt :long-name "version")
-     (print "Erudite Literate Programming System for Common Lisp version 0.0.1"))
+     (format t "Erudite Literate Programming System for Common Lisp version 0.0.1~%"))
     (t
      (let ((title (stringp* (clon:getopt :long-name "title")))
 	   (author (stringp* (clon:getopt :long-name "author")))
@@ -128,14 +128,16 @@ The command line is implemented via the @emph{com.dvl.clon} library.
 	   (implicit-doc (clon:getopt :long-name "implicit-doc"))
 	   (implicit-code (clon:getopt :long-name "implicit-code"))
 	   (files (mapcar #'pathname (clon:remainder))))
-       (erudite:erudite output files 
-			:debug debug
-			:verbose verbose
-			:implicit-doc implicit-doc
-			:implicit-code implicit-code
-			:title title
-			:author author
-			:output-type output-type
-			:syntax syntax)))))
+       (if (null files)
+	   (format t "Error: provide the files to process~%")
+	   (erudite:erudite output files 
+			    :debug debug
+			    :verbose verbose
+			    :implicit-doc implicit-doc
+			    :implicit-code implicit-code
+			    :title title
+			    :author author
+			    :output-type output-type
+			    :syntax syntax))))))
 
 (clon:dump "erudite" main)

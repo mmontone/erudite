@@ -745,15 +745,17 @@ condition CONDITION is signaled in Erudite."
 
 (defun call-with-error-handling (catch-errors-p function)
   (setf *catch-errors-p* catch-errors-p)
-  (handler-bind
-      ((error #'maybe-invoke-debugger))
-    (funcall function)))
+  (handler-case
+      (funcall function)
+    (error (e) 
+      (maybe-invoke-debugger e))))
 
 (defmacro with-destination ((var destination) &body body)
   `(call-with-destination ,destination
                           (lambda (,var) ,@body)))
 
-(defmacro with-error-handling ((&optional (catch-errors-p 't))  &body body)
+(defmacro with-error-handling ((&optional (catch-errors-p '*catch-errors-p*))  
+			       &body body)
   `(call-with-error-handling ,catch-errors-p (lambda () ,@body)))
 
 (defun erudite (destination file-or-files
