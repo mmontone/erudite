@@ -1,5 +1,8 @@
 .PHONY: all clean sphinx
 
+erudite/index.html: erudite.tex
+	latex2html erudite.tex
+
 erudite.pdf: erudite.tex
 	pdflatex erudite.tex
 	makeindex erudite.idx
@@ -24,12 +27,15 @@ markdown: erudite.md ## Build markdown literate documentation
 
 pdf: erudite.pdf ## Build PDF literate documentation
 
+latex-html: erudite/index.html ## Generate HTML from Latex
+
 all: erudite.pdf sphinx-pdf erudite.md
 
 clean: ## Remove generated documentation files
 	rm -f erudite.tex
 	rm -f erudite.md
 	rm -f erudite.pdf
+	rm -rf erudite
 
 help:   ## Show this help.
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
