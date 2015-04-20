@@ -1,8 +1,5 @@
 .PHONY: all clean sphinx
 
-erudite/index.html: erudite.tex
-	latex2html erudite.tex
-
 erudite.pdf: erudite.tex
 	pdflatex erudite.tex
 	makeindex erudite.idx
@@ -10,6 +7,9 @@ erudite.pdf: erudite.tex
 
 erudite.tex:
 	erudite -o erudite.tex --output-type=latex ../erudite.lisp
+
+erudite/index.html: erudite.tex
+	latex2html erudite.tex
 
 sphinx: ## Build sphinx literate documentation
 	erudite -o sphinx/index.rst --output-type=sphinx ../erudite.lisp
