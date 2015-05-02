@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Erudite by mmontone</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Erudite</h1>
+        <p>Literate Programming System for Common Lisp</p>
+        <p class="view"><a href="https://github.com/mmontone/erudite">View the Project on GitHub <small>mmontone/erudite</small></a></p>
+        <ul>
+          <li><a href="https://github.com/mmontone/erudite/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/mmontone/erudite/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/mmontone/erudite">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="erudite" class="anchor" href="#erudite" aria-hidden="true"><span class="octicon octicon-link"></span></a>ERUDITE</h1>
+
+<p>Erudite is a Literate Programming System for Common Lisp</p>
+
+<h1>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features</h1>
+
+<ul>
+<li><p>Documentation is written in Common Lisp comments. This is very useful because you can work with your program as if it were not a literate program: you can load it, work from SLIME, etc, directly.</p></li>
+<li><p>Multiple syntaxes. Multiple type of literate syntax are supported. It is possible to choose from the default Erudite syntax, or use plain Latex or Sphinx syntax, and potentially others.</p></li>
+<li><p>Multiple outputs. Like Latex, Sphinx, Markdown, HTML, etc.</p></li>
+<li><p>Automatic indexing and cross-references.</p></li>
+<li><p>A command line interface.</p></li>
+<li><p>It is portable. You can compile and use in several CL systems (has been tested on SBCL, CCL, CLISP, ECL, so far)</p></li>
+</ul>
+
+<h2>
+<a id="quickstart" class="anchor" href="#quickstart" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quickstart</h2>
+
+<p>Run <code>make</code> to build erudite command line if you want to run it from there, and then <code>sudo make install</code> to install.</p>
+
+<pre><code>Usage: erudite [-hvd] [+vd] [OPTIONS] FILES...
+
+Erudite is a Literate Programming System for Common Lisp
+  -h, --help                  Print this help and exit.
+  --version                   Print Erudite version
+  -(+)v, --verbose[=yes/no]   Run in verbose mode
+                              Fallback: yes
+                              Default: no
+                              Environment: VERBOSE
+  -(+)d, --debug[=on/off]     Turn debugging on or off.
+                              Fallback: on
+                              Default: off
+                              Environment: DEBUG
+  -(+)id, --implicit-doc[=yes/no] Treat all comments as documentation
+                              Fallback: yes
+                              Default: yes
+  -(+)ic, --implicit-code[=yes/no] Include all code in documentation
+                              Fallback: yes
+                              Default: yes
+  -o, --output=OUTPUT         The output file. If none is used, result is 
+                              printed to stdout
+  --output-type=OUTPUT-TYPE   The output type. One of 'latex', 
+                              'sphinx','markdown'
+                              Default: latex
+  --syntax=SYNTAX             The syntax used in source files. One of 'erudite',
+                              'latex', 'sphinx', 'markdown'
+                              Default: erudite
+  --author=AUTHOR             The author to appear in the document
+  --title=TITLE               The document title
+</code></pre>
+
+<p>Or run it from lisp, using the <code>erudite</code> function described below.</p>
+
+<p>To build erudite own documentation, run <code>make</code> under the <code>doc</code> directory:</p>
+
+<pre><code>make pdf
+make sphinx-pdf
+make sphinx-html
+make markdown
+</code></pre>
+
+<p>Look at the <code>doc</code> directory for output examples.</p>
+
+<h2>
+<a id="functions" class="anchor" href="#functions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Functions</h2>
+
+<h3>
+<a id="erudite-1" class="anchor" href="#erudite-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>erudite</h3>
+
+<div class="highlight highlight-lisp"><pre>(pathname files &amp;rest args &amp;key (output-type <span class="pl-smi">*output-type*</span>)
+          (syntax <span class="pl-smi">*syntax*</span>) &amp;allow-other-keys)</pre></div>
+
+<p>Processes literate lisp files and creates a document.</p>
+
+<ul>
+<li>
+<strong>pathname</strong>: Pathname of the file to generate</li>
+<li>
+<strong>files</strong>: Literate lisp files to compile</li>
+<li>
+<strong>args</strong>: All sort of options passed to the generation functions</li>
+<li>
+<strong>output-type</strong>: The kind of document to generate.
+               One of :latex, :sphinx, :markdown
+               Default: :latex</li>
+<li>
+<strong>syntax</strong>:  The kind of syntax used in the literate source files.
+               One of: :erudite, :latex, :sphinx, :markdown.
+               Default: :erudite</li>
+</ul>
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/mmontone">mmontone</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
