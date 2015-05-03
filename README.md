@@ -1,8 +1,10 @@
 # ERUDITE
 
-Erudite is a Literate Programming System for Common Lisp
+## Introduction
 
-# Features
+Erudite is a [Literate Programming](http://en.wikipedia.org/wiki/Literate_programming) System for Common Lisp
+
+## Features
 
 * No tangling phase in which code is extracted from documentation. Documentation is written in Common Lisp comments. This allows for incremental development: you can load your code, work from SLIME, etc, directly, as in any other Lisp project.
 
@@ -84,3 +86,8 @@ Processes literate lisp files and creates a document.
 - **syntax**:  The kind of syntax used in the literate source files.
                    One of: :erudite, :latex, :sphinx, :markdown.
                    Default: :erudite
+
+## References
+
+* [Literate Programming](http://en.wikipedia.org/wiki/Literate_programming)
+* [Literate Programming in the Large](https://youtu.be/Av0PQDVTP4A)
