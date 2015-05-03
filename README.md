@@ -6,7 +6,7 @@ Erudite is a [Literate Programming](http://en.wikipedia.org/wiki/Literate_progra
 
 ## Features
 
-* No tangling phase in which code is extracted from documentation. Documentation is written in Common Lisp comments. This allows for incremental development: you can load your code, work from SLIME, etc, directly, as in any other Lisp project.
+* Interactive development. No tangling phase in which code is extracted from documentation. Documentation is written in Common Lisp comments. This allows for incremental development: you can load your code, work from SLIME, etc, directly, as in any other Lisp project.
 
 * Multiple syntaxes. Multiple type of literate syntax are supported. It is possible to choose from the default Erudite syntax, or use plain Latex or Sphinx syntax, and potentially others.
 
