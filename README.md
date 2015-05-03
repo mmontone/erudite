@@ -91,3 +91,4 @@ Processes literate lisp files and creates a document.
 
 * [Literate Programming](http://en.wikipedia.org/wiki/Literate_programming)
 * [Literate Programming in the Large](https://youtu.be/Av0PQDVTP4A)
+* [Erudite: a tool for Literate Programming in Common Lisp](http://mmontone-programming.blogspot.com.ar/2015/05/literate-programming-in-common-lisp.html)
