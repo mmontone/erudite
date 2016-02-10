@@ -51,14 +51,14 @@ The command line is implemented via the @emph{com.dvl.clon} library.
 
 |#
 
-(ql:quickload :com.dvlsoft.clon)
+(ql:quickload :net.didierverna.clon)
 (ql:quickload :erudite)
 
 (defpackage erudite.cli
   (:use :cl :erudite))
 
 (eval-when (:execute :load-toplevel :compile-toplevel)
-  (com.dvlsoft.clon:nickname-package))
+  (net.didierverna.clon:nickname-package))
 
 (clon:defsynopsis (:postfix "FILES...")
   (text :contents (format nil "Erudite is a Literate Programming System for Common Lisp"))
