@@ -1,5 +1,8 @@
 # ERUDITE
 
+[![Quicklisp](http://quickdocs.org/badge/erudite.svg)](http://quickdocs.org/erudite/)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 ## Introduction
 
 Erudite is a [Literate Programming](http://en.wikipedia.org/wiki/Literate_programming) System for Common Lisp
