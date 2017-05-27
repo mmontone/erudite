@@ -82,7 +82,7 @@ Erudite is invoked calling @ref{erudite} function.
 
 @section Algorithm
 
-Multiple passes are run on the input files. This is because we want to be able to invoke chunks and extracts from file to file, from top to down and down to top. In a word, from everywhere without restrictions. 
+Multiple passes are run on the input files. This is because we want to be able to invoke chunks and extracts from file to file, from top to down and down to top. In a word, from everywhere without restrictions.
 
 @subsection Includes expansion
 
@@ -94,38 +94,38 @@ In the first pass, @emph{include} directives are expanded to be able to process 
 (defun expand-includes (stream)
   "Expand include directives"
   (with-output-to-string (output)
-    (loop 
-      :for line := (read-line stream nil)
-      :while line
-      :do
-	 (cond 
-	   ((scan "@include-path\\s+(.+)" line)
-	    (log:debug "~A" line)
-	    (register-groups-bind (path) ("@include-path\\s+(.+)" line)
-              (setf *include-path* (pathname path))))
-	   ((scan "@include\\s+(.+)" line)
-	    (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
-              (let ((pathname (cond
-                                ((fad:pathname-absolute-p
-                                  (pathname filename-or-path))
-                                 filename-or-path)
-                                (*include-path*
-                                 (merge-pathnames filename-or-path
-                                                  *include-path*))
-                                (*current-path* 
-				 (merge-pathnames filename-or-path
-						  *current-path*))
-				(t (error "No base path for include. This should not have happened")))))
-		(log:debug "Including ~A" pathname)
-		;; Expand the included file source into output
-		(with-input-from-string (source (file-to-string pathname))
-		  (write-string (expand-includes source) output))
-		)))
-	   (t
-	    (write-string line output)
-	    (terpri output))))))
+    (loop
+       :for line := (read-line stream nil)
+       :while line
+       :do
+       (cond
+         ((scan "@include-path\\s+(.+)" line)
+          (log:debug "~A" line)
+          (register-groups-bind (path) ("@include-path\\s+(.+)" line)
+            (setf *include-path* (pathname path))))
+         ((scan "@include\\s+(.+)" line)
+          (register-groups-bind (filename-or-path) ("@include\\s+(.+)" line)
+            (let ((pathname (cond
+                              ((fad:pathname-absolute-p
+                                (pathname filename-or-path))
+                               filename-or-path)
+                              (*include-path*
+                               (merge-pathnames filename-or-path
+                                                *include-path*))
+                              (*current-path*
+                               (merge-pathnames filename-or-path
+                                                *current-path*))
+                              (t (error "No base path for include. This should not have happened")))))
+              (log:debug "Including ~A" pathname)
+              ;; Expand the included file source into output
+              (with-input-from-string (source (file-to-string pathname))
+                (write-string (expand-includes source) output))
+              )))
+         (t
+          (write-string line output)
+          (terpri output))))))
 
-#| 
+#|
 @subsection Chunks extraction
 
 After includes have been expanded, it is time to extract chunks.
@@ -138,29 +138,29 @@ After includes have been expanded, it is time to extract chunks.
   (with-input-from-string (stream string)
     (with-output-to-string (output)
       (loop
-	:with current-chunk := nil
-	:for line := (read-line stream nil)
-	:while line
-	:do
-	   (cond
-	     ((scan "@chunk\\s+(.+)" line)
-	      (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
-		(setf current-chunk (list :name chunk-name
-					  :output (make-string-output-stream)))
-		(write-chunk-name chunk-name output)
-		(terpri output)))
-	     ((scan "@end chunk" line)
-	      (push (cons (getf current-chunk :name)
-			  (getf current-chunk :output))
-		    *chunks*)
-	      (setf current-chunk nil))
-	     (current-chunk
-	      (let ((chunk-output (getf current-chunk :output)))
-		(write-string line chunk-output)
-		(terpri chunk-output)))
-	     (t
-	      (write-string line output)
-	      (terpri output)))))))
+         :with current-chunk := nil
+         :for line := (read-line stream nil)
+         :while line
+         :do
+         (cond
+           ((scan "@chunk\\s+(.+)" line)
+            (register-groups-bind (chunk-name) ("@chunk\\s+(.+)" line)
+              (setf current-chunk (list :name chunk-name
+                                        :output (make-string-output-stream)))
+              (write-chunk-name chunk-name output)
+              (terpri output)))
+           ((scan "@end chunk" line)
+            (push (cons (getf current-chunk :name)
+                        (getf current-chunk :output))
+                  *chunks*)
+            (setf current-chunk nil))
+           (current-chunk
+            (let ((chunk-output (getf current-chunk :output)))
+              (write-string line chunk-output)
+              (terpri chunk-output)))
+           (t
+            (write-string line output)
+            (terpri output)))))))
 
 #|
 Once both includes have been expanded, and chunks have been pre proccessed, the resulting output with literate code is parsed into @emph{fragments}. Fragments can be of type @it{documentation} or type @it{code}. @it{documentation} is the text that appears in Common Lisp comments. @it{code} fragments are the rest. This is done via the @ref{split-file-source} function.
@@ -174,10 +174,10 @@ Once both includes have been expanded, and chunks have been pre proccessed, the 
   (with-input-from-string (stream str)
     (append-source-fragments
      (loop
-       :for line := (read-line stream nil)
-       :while line
-       :collect
-       (parse-line line stream)))))
+        :for line := (read-line stream nil)
+        :while line
+        :collect
+        (parse-line line stream)))))
 #|
 When splitting the source in fragments, we can parse either a long comment, a short comment, or lisp code:
 |#
@@ -206,24 +206,24 @@ When splitting the source in fragments, we can parse either a long comment, a sh
     ;; We've found a long comment
     ;; Extract the comment source
     (let ((comment
-            (with-output-to-string (s)
+           (with-output-to-string (s)
              ;;; First, add the first comment line
-              (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
-                (write-string comment-line s))
-              ; While there are lines without |#, add them to the comment source
-	      (loop
-		 :for line := (read-line stream nil)
-		 :while (and line (not (search "|#" line)))
-		 :do
-                   (terpri s)
-                   (write-string line s)
+             (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
+               (write-string comment-line s))
+                                        ; While there are lines without |#, add them to the comment source
+             (loop
+                :for line := (read-line stream nil)
+                :while (and line (not (search "|#" line)))
+                :do
+                (terpri s)
+                (write-string line s)
                 :finally
-                   ;; Finally, extract the last comment line
-                   (if line
-                       (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
-                         (when comment-line
-                           (write-string comment-line s)))
-                       (error "EOF: Could not complete comment parsing"))))))
+                ;; Finally, extract the last comment line
+                (if line
+                    (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
+                      (when comment-line
+                        (write-string comment-line s)))
+                    (error "EOF: Could not complete comment parsing"))))))
       (list :doc comment))))
 
 (defun parse-long-comment-explicit (line stream)
@@ -233,28 +233,28 @@ When splitting the source in fragments, we can parse either a long comment, a sh
     (setf *parsing-doc* t)
     ;; Extract the comment source
     (let ((comment
-	   (with-output-to-string (s)
+           (with-output-to-string (s)
 ;;; First, add the first comment line
-	     (register-groups-bind (comment-line) 
-		 ("^\\s*\\#\\|\\s+@doc\\s+(.+)" line)
-	       (when comment-line
-		 (write-string comment-line s)))
-	     ; While there are lines without `|#` or `@end doc`, add them to the comment source
-	     (loop
-		:for line := (read-line stream nil)
-		:while (and line (not (or (search "|#" line)
-					  (search "@end doc" line))))
-		:do
-		(terpri s)
-		(write-string line s)
+             (register-groups-bind (comment-line)
+                 ("^\\s*\\#\\|\\s+@doc\\s+(.+)" line)
+               (when comment-line
+                 (write-string comment-line s)))
+                                        ; While there are lines without `|#` or `@end doc`, add them to the comment source
+             (loop
+                :for line := (read-line stream nil)
+                :while (and line (not (or (search "|#" line)
+                                          (search "@end doc" line))))
+                :do
+                (terpri s)
+                (write-string line s)
                 :finally
-		;; Finally, extract the last comment line
-		(if line
-		    (when (not (search "@end doc" line))
-		      (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
-			(when comment-line
-			  (write-string comment-line s))))
-		    (error "EOF: Could not complete comment parsing"))))))
+                ;; Finally, extract the last comment line
+                (if line
+                    (when (not (search "@end doc" line))
+                      (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
+                        (when comment-line
+                          (write-string comment-line s))))
+                    (error "EOF: Could not complete comment parsing"))))))
       (list :doc comment))))
 
 (defun parse-short-comment (line stream)
@@ -272,34 +272,34 @@ When splitting the source in fragments, we can parse either a long comment, a sh
     (setf *parsing-doc* t)
     (let* ((comment-regex (format nil "~A\\s*(.+)" *short-comments-prefix*))
            (comment
-	    (or 
-	     (register-groups-bind (comment-line) (comment-regex line)
-	       (string-left-trim (list #\; #\space)
-				 comment-line))
-	     "")))
-	(list :doc comment))))
+            (or
+             (register-groups-bind (comment-line) (comment-regex line)
+               (string-left-trim (list #\; #\space)
+                                 comment-line))
+             "")))
+      (list :doc comment))))
 
 (defun parse-short-comment-explicit (line stream)
-  (let ((regex (format nil "^\\s*~A\\s+@doc\\s*(.*)" 
-		       *short-comments-prefix*)))
-    (cond 
+  (let ((regex (format nil "^\\s*~A\\s+@doc\\s*(.*)"
+                       *short-comments-prefix*)))
+    (cond
       ((and *parsing-doc*
-	    (search *short-comments-prefix* 
-		    (string-left-trim (list #\space #\tab)
-				      line)))
-       
+            (search *short-comments-prefix*
+                    (string-left-trim (list #\space #\tab)
+                                      line)))
+
        (list :doc (string-left-trim (list #\; #\space)
-				    line)))
+                                    line)))
       ((ppcre:scan regex line)
        ;; A short comment was found
        (setf *parsing-doc* t)
        (let ((comment
-	      (or 
-	       (register-groups-bind (comment-line) (regex line)
-		 (string-left-trim (list #\; #\space)
-				   comment-line))
-	       "")))
-	 (list :doc comment))))))
+              (or
+               (register-groups-bind (comment-line) (regex line)
+                 (string-left-trim (list #\; #\space)
+                                   comment-line))
+               "")))
+         (list :doc comment))))))
 
 (defun parse-code (line stream)
   (setf *parsing-doc* nil)
@@ -310,19 +310,19 @@ When splitting the source in fragments, we can parse either a long comment, a sh
   (let ((appended-fragments nil)
         (current-fragment (first fragments)))
     (loop
-      :for fragment :in (cdr fragments)
-      :do
-         (if (equalp (first fragment) (first current-fragment))
-             ;; The fragments are of the same type. Append them
-             (setf (second current-fragment)
-                   (with-output-to-string (s)
-                     (write-string (second current-fragment) s)
-                     (terpri s)
-                     (write-string (second fragment) s)))
-             ;; else, there's a new kind of fragment
-             (progn
-               (setf appended-fragments (append-to-end current-fragment appended-fragments))
-               (setf current-fragment fragment))))
+       :for fragment :in (cdr fragments)
+       :do
+       (if (equalp (first fragment) (first current-fragment))
+           ;; The fragments are of the same type. Append them
+           (setf (second current-fragment)
+                 (with-output-to-string (s)
+                   (write-string (second current-fragment) s)
+                   (terpri s)
+                   (write-string (second fragment) s)))
+           ;; else, there's a new kind of fragment
+           (progn
+             (setf appended-fragments (append-to-end current-fragment appended-fragments))
+             (setf current-fragment fragment))))
     (setf appended-fragments (append-to-end current-fragment appended-fragments))
     appended-fragments))
 
@@ -338,13 +338,13 @@ When splitting the source in fragments, we can parse either a long comment, a sh
 
 (defmethod process-fragment ((type (eql :code)) fragment output cont)
   ;; Ensure that this is not an empty code fragment first
-  (when (not 
-	 (zerop (length
-		 (remove #\  (remove #\newline (second fragment))))))
+  (when (not
+         (zerop (length
+                 (remove #\  (remove #\newline (second fragment))))))
     ;; Extract and output indexes if it is enabled
     (when *code-indexing*
       (let ((indexes (extract-indexes (second fragment))))
-	(write-indexes indexes output *output-type*)))
+        (write-indexes indexes output *output-type*)))
     ;; Finally write the code fragment to the output
     (write-code (second fragment) output *output-type*))
   ;; Goon with the parsing
@@ -386,13 +386,13 @@ When splitting the source in fragments, we can parse either a long comment, a sh
 (defmethod process-doc ((syntax (eql :erudite)) output-type line stream cont)
   (let ((formatted-line line))
     (loop
-      :for syntax :in *erudite-syntax*
-      :while formatted-line
-      :when (match-syntax syntax formatted-line)
-        :do
-           (setf formatted-line (process-syntax syntax formatted-line stream output-type))
-      :finally (when formatted-line
-                 (write-doc-line formatted-line stream output-type)))
+       :for syntax :in *erudite-syntax*
+       :while formatted-line
+       :when (match-syntax syntax formatted-line)
+       :do
+       (setf formatted-line (process-syntax syntax formatted-line stream output-type))
+       :finally (when formatted-line
+                  (write-doc-line formatted-line stream output-type)))
     (terpri stream)
     (funcall cont)))
 
@@ -456,28 +456,28 @@ Once the literate code has been parsed and processed, it is time to resolve the 
   (with-output-to-string (output)
     (with-input-from-string (s str)
       (loop
-        :for line := (read-line s nil)
-        :while line
-        :do
-           (cond
-             ((scan "^__INSERT_CHUNK__(.*)$" line)
-              (register-groups-bind (chunk-name)
-                  ("^__INSERT_CHUNK__(.*)$" line)
-                ;; Insert the chunk
-                (let ((chunk (find-chunk chunk-name)))
-                  (write-chunk chunk-name
-                               (get-output-stream-string (cdr chunk))
-                               output))))
-             ((scan "^__INSERT_EXTRACT__(.*)$" line)
-              (register-groups-bind (extract-name)
-                  ("^__INSERT_EXTRACT__(.*)$" line)
-                ;; Insert the extract
-                (let ((extract (find-extract extract-name)))
-                  (write-string (get-output-stream-string (cdr extract))
-                                output))))
-             (t
-              (write-string line output)
-              (terpri output)))))))
+         :for line := (read-line s nil)
+         :while line
+         :do
+         (cond
+           ((scan "^__INSERT_CHUNK__(.*)$" line)
+            (register-groups-bind (chunk-name)
+                ("^__INSERT_CHUNK__(.*)$" line)
+              ;; Insert the chunk
+              (let ((chunk (find-chunk chunk-name)))
+                (write-chunk chunk-name
+                             (get-output-stream-string (cdr chunk))
+                             output))))
+           ((scan "^__INSERT_EXTRACT__(.*)$" line)
+            (register-groups-bind (extract-name)
+                ("^__INSERT_EXTRACT__(.*)$" line)
+              ;; Insert the extract
+              (let ((extract (find-extract extract-name)))
+                (write-string (get-output-stream-string (cdr extract))
+                              output))))
+           (t
+            (write-string line output)
+            (terpri output)))))))
 
 #|
 @subsection Conclusion
@@ -493,23 +493,23 @@ The whole process is invoked from @ref{process-file-to-string} function.
        (with-output-to-string (s)
          (process-fragments
           (split-file-source
-           (extract-chunks 
-	    (expand-includes f)))
+           (extract-chunks
+            (expand-includes f)))
           s))))))
 
 (defmethod process-file-to-string ((files cons))
   (post-process-output
    (with-output-to-string (s)
-     (let ((*current-path* 
-	     (fad:pathname-directory-pathname (first files))))
+     (let ((*current-path*
+            (fad:pathname-directory-pathname (first files))))
        (process-fragments
         (loop
-          :for file :in files
-          :appending
-          (with-open-file (f file)
-            (split-file-source
-             (extract-chunks 
-	      (expand-includes f)))))
+           :for file :in files
+           :appending
+           (with-open-file (f file)
+             (split-file-source
+              (extract-chunks
+               (expand-includes f)))))
         s)))))
 
 (defmethod process-file-to-string :before (pathname)
@@ -528,8 +528,8 @@ The whole process is invoked from @ref{process-file-to-string} function.
        (with-output-to-string (s)
          (process-fragments
           (split-file-source
-           (extract-chunks 
-	    (expand-includes f)))
+           (extract-chunks
+            (expand-includes f)))
           s))))))
 
 #|
@@ -552,13 +552,13 @@ The whole process is invoked from @ref{process-file-to-string} function.
 (defun extract-indexes (code)
   (let ((indexes))
     (loop
-      :for line :in (split-sequence:split-sequence #\newline code)
-      :do
-         (do-register-groups (definition-type name)
-             ("^\\((def\\S*)\\s+([^\\s(]*)" line)
-           (push (list (parse-definition-type definition-type)
-                       name)
-                 indexes)))
+       :for line :in (split-sequence:split-sequence #\newline code)
+       :do
+       (do-register-groups (definition-type name)
+           ("^\\((def\\S*)\\s+([^\\s(]*)" line)
+         (push (list (parse-definition-type definition-type)
+                     name)
+               indexes)))
     indexes))
 
 (defgeneric write-indexes (indexes output output-type))
@@ -569,9 +569,9 @@ The whole process is invoked from @ref{process-file-to-string} function.
                                         ;           (mapcar (alexandria:compose #'escape-latex #'second)
                                         ;                   indexes))
     (loop for index in (remove-duplicates indexes :key #'second :test #'equalp)
-          do
-             (format output "\\index{~A}~%" (escape-latex (second index)))
-             (format output "\\label{~A}~%" (latex-label (second index))))
+       do
+         (format output "\\index{~A}~%" (escape-latex (second index)))
+         (format output "\\label{~A}~%" (latex-label (second index))))
     (terpri output)))
 
 (defmethod write-indexes (indexes output (output-type (eql :sphinx)))
@@ -694,7 +694,7 @@ Sphinx is the other kind of output apart from LaTeX.
          - files: .lisp files to compile.
          - prelude: String (or pathname) to append before the Sphinx document.
          - postlude: String (or pathname) to append after the Sphinx document."
-  
+
   (when prelude
     (write-string
      (if (pathnamep prelude)
@@ -723,7 +723,7 @@ Markdown is another output type.
          - files: .lisp files to compile.
          - prelude: String (or pathname) to append before the document.
          - postlude: String (or pathname) to append after the document."
-  
+
   (when prelude
     (write-string
      (if (pathnamep prelude)
@@ -748,14 +748,14 @@ Markdown is another output type.
          - files: .lisp files to compile.
          - prelude: String (or pathname) to append before the document.
          - postlude: String (or pathname) to append after the document."
-  
+
   (when prelude
     (write-string
      (if (pathnamep prelude)
          (file-to-string prelude)
          prelude)
      output))
-  
+
   (let ((title (or title *title*)))
     (when title
       (format output "#+TITLE: ~a~%~%" title)))
@@ -763,9 +763,9 @@ Markdown is another output type.
   (let ((author (or author *author*)))
     (when author
       (format output "#+AUTHOR: ~A~%~%" author)))
-  
+
   (write-string (process-file-to-string files) output)
-  
+
   (when postlude
     (write-string (if (pathnamep postlude)
                       (file-to-string postlude)
@@ -781,8 +781,8 @@ Markdown is another output type.
        (funcall function output)))
     ((pathnamep destination)
      (with-open-file (f destination :direction :output
-                                    :if-exists :supersede
-                                    :if-does-not-exist :create)
+                        :if-exists :supersede
+                        :if-does-not-exist :create)
        (funcall function f)))
     ((streamp destination)
      (funcall function destination))
@@ -801,27 +801,28 @@ condition CONDITION is signaled in Erudite."
   (setf *catch-errors-p* catch-errors-p)
   (handler-case
       (funcall function)
-    (error (e) 
+    (error (e)
       (maybe-invoke-debugger e))))
 
 (defmacro with-destination ((var destination) &body body)
   `(call-with-destination ,destination
                           (lambda (,var) ,@body)))
 
-(defmacro with-error-handling ((&optional (catch-errors-p '*catch-errors-p*))  
-			       &body body)
+(defmacro with-error-handling ((&optional (catch-errors-p '*catch-errors-p*))
+                               &body body)
   `(call-with-error-handling ,catch-errors-p (lambda () ,@body)))
 
 (defun erudite (destination file-or-files
-                &rest args &key 
-			     (output-type *output-type*)
+                &rest args &key
+                             (output-type *output-type*)
                              (syntax *syntax*)
-			     (debug *debug*)
-			     (verbose *verbose*)
-			     (catch-errors-p *catch-errors-p*)
-			     (code-indexing *code-indexing*)
-			     (implicit-doc *implicit-doc*)
-			     (implicit-code *implicit-code*)
+                             (debug *debug*)
+                             (verbose *verbose*)
+                             (catch-errors-p *catch-errors-p*)
+                             (code-indexing *code-indexing*)
+                             (implicit-doc *implicit-doc*)
+                             (implicit-code *implicit-code*)
+                             (short-comments-prefix *short-comments-prefix*)
                              &allow-other-keys)
   "Processes literate lisp files and creates a document.
 
@@ -838,14 +839,15 @@ condition CONDITION is signaled in Erudite."
     (with-destination (output destination)
       (let ((*output-type* output-type)
             (*syntax* syntax)
-	    (*debug* debug)
-	    (*verbose* verbose)
-	    (*implicit-doc* implicit-doc)
-	    (*implicit-code* implicit-code))
-	(when *verbose*
-	  (log:config :info))
-	(when *debug*
-	  (log:config :debug))  
+            (*debug* debug)
+            (*verbose* verbose)
+            (*implicit-doc* implicit-doc)
+            (*implicit-code* implicit-code)
+            (*short-comments-prefix* short-comments-prefix))
+        (when *verbose*
+          (log:config :info))
+        (when *debug*
+          (log:config :debug))
         (apply #'gen-doc output-type
                output
                (if (listp file-or-files)

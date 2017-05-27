@@ -118,6 +118,16 @@
               (setf *author* author))
             (funcall cont)))
 
+;; @subsubsection Comments prefix
+
+(define-command short-comments-prefix
+  (:match (line)
+          (scan "@short-comments-prefix\\s+(.+)" line))
+  (:process (line input output cont)
+            (register-groups-bind (prefix) ("@short-comments-prefix\\s+(.+)" line)
+              (setf *short-comments-prefix* prefix))
+            (funcall cont)))
+
 ;; @subsubsection Chunks
 
 (defun find-chunk (chunk-name &key (error-p t))
