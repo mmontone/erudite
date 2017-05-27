@@ -29,10 +29,10 @@ Erudite is a Literate Programming System for Common Lisp
   -o, --output=OUTPUT         The output file. If none is used, result is 
                               printed to stdout
   --output-type=OUTPUT-TYPE   The output type. One of 'latex', 
-                              'sphinx','markdown'
+                              'sphinx','markdown', 'org'
                               Default: latex
   --syntax=SYNTAX             The syntax used in source files. One of 'erudite',
-                              'latex', 'sphinx', 'markdown'
+                              'latex', 'sphinx', 'markdown', 'org'
                               Default: erudite
   --author=AUTHOR             The author to appear in the document
   --title=TITLE               The document title
@@ -88,12 +88,12 @@ The command line is implemented via the @emph{com.dvl.clon} library.
 	:description "The output file. If none is used, result is printed to stdout")
   (enum :long-name "output-type"
 	:argument-name "OUTPUT-TYPE"
-	:enum (list :latex :sphinx :markdown)
+	:enum (list :latex :sphinx :markdown :org)
 	:default-value :latex
 	:description "The output type. One of 'latex', 'sphinx','markdown'")
   (enum :long-name "syntax"
 	:argument-name "SYNTAX"
-	:enum (list :erudite :latex :sphinx :markdown)
+	:enum (list :erudite :latex :sphinx :markdown :org)
 	:default-value :erudite
 	:description "The syntax used in source files. One of 'erudite', 'latex', 'sphinx', 'markdown'")
   (stropt :long-name "author"

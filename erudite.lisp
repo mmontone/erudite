@@ -378,6 +378,11 @@ When splitting the source in fragments, we can parse either a long comment, a sh
   (terpri stream)
   (funcall cont))
 
+(defmethod process-doc ((syntax (eql :org)) output-type line stream cont)
+  (write-string line stream)
+  (terpri stream)
+  (funcall cont))
+
 (defmethod process-doc ((syntax (eql :erudite)) output-type line stream cont)
   (let ((formatted-line line))
     (loop
@@ -418,6 +423,14 @@ When splitting the source in fragments, we can parse either a long comment, a sh
   (write-string code stream)
   (terpri stream)
   (write-string "```" stream)
+  (terpri stream))
+
+(defmethod write-code (code stream (output-type (eql :org)))
+  (write-string "#+BEGIN_SRC lisp" stream)
+  (terpri stream)
+  (write-string code stream)
+  (terpri stream)
+  (write-string " #+END_SRC" stream)
   (terpri stream))
 
 (defmethod write-chunk-name (chunk-name stream)
@@ -569,6 +582,10 @@ The whole process is invoked from @ref{process-file-to-string} function.
   ;; TODO: implement
   )
 
+(defmethod write-indexes (indexes output (output-type (eql :org)))
+  ;; TODO: implement
+  )
+
 (defun escape-latex (str)
   (let ((escaped str))
     (flet ((%replace (thing replacement)
@@ -677,6 +694,7 @@ Sphinx is the other kind of output apart from LaTeX.
          - files: .lisp files to compile.
          - prelude: String (or pathname) to append before the Sphinx document.
          - postlude: String (or pathname) to append after the Sphinx document."
+  
   (when prelude
     (write-string
      (if (pathnamep prelude)
@@ -705,6 +723,7 @@ Markdown is another output type.
          - files: .lisp files to compile.
          - prelude: String (or pathname) to append before the document.
          - postlude: String (or pathname) to append after the document."
+  
   (when prelude
     (write-string
      (if (pathnamep prelude)
@@ -712,6 +731,41 @@ Markdown is another output type.
          prelude)
      output))
   (write-string (process-file-to-string files) output)
+  (when postlude
+    (write-string (if (pathnamep postlude)
+                      (file-to-string postlude)
+                      postlude)
+                  output)))
+
+(defmethod gen-doc ((output-type (eql :org)) output files &key prelude postlude syntax
+                                                            (title *title*)
+                                                            (subtitle *subtitle*)
+                                                            (author *author*)
+                                                            &allow-other-keys)
+  "Generates Emacs org-mode document.
+
+   Args: - output: The output stream.
+         - files: .lisp files to compile.
+         - prelude: String (or pathname) to append before the document.
+         - postlude: String (or pathname) to append after the document."
+  
+  (when prelude
+    (write-string
+     (if (pathnamep prelude)
+         (file-to-string prelude)
+         prelude)
+     output))
+  
+  (let ((title (or title *title*)))
+    (when title
+      (format output "#+TITLE: ~a~%~%" title)))
+
+  (let ((author (or author *author*)))
+    (when author
+      (format output "#+AUTHOR: ~A~%~%" author)))
+  
+  (write-string (process-file-to-string files) output)
+  
   (when postlude
     (write-string (if (pathnamep postlude)
                       (file-to-string postlude)
@@ -778,7 +832,7 @@ condition CONDITION is signaled in Erudite."
                         One of :latex, :sphinx
                         Default: :latex
          - syntax: The kind of syntax used in the literate source files.
-                       One of: :erudite, :latex, :sphinx.
+                       One of: :erudite, :latex, :org, :sphinx.
                        Default: :erudite"
   (with-error-handling (catch-errors-p)
     (with-destination (output destination)

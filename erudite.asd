@@ -12,7 +12,8 @@
 			((:file "erudite")
 			 (:file "latex")
 			 (:file "sphinx")
-			 (:file "markdown")))
+			 (:file "markdown")
+             (:file "org")))
 	       (:file "erudite"))
   :depends-on (:cl-fad
 	       :cl-ppcre
