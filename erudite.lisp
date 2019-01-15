@@ -400,12 +400,21 @@ When splitting the source in fragments, we can parse either a long comment, a sh
   (write-string line stream))
 
 (defmethod write-code (code stream (output-type (eql :latex)))
-  (write-string "\\begin{code}" stream)
-  (terpri stream)
-  (write-string code stream)
-  (terpri stream)
-  (write-string "\\end{code}" stream)
-  (terpri stream))
+  (if *latex-highlight-syntax*
+      (progn
+        (write-string "\\begin{minted}[fontsize=\\footnotesize]{common-lisp}" stream)
+        (terpri stream)
+        (write-string code stream)
+        (terpri stream)
+        (write-string "\\end{minted}" stream)
+        (terpri stream))
+      (progn
+        (write-string "\\begin{code}" stream)
+        (terpri stream)
+        (write-string code stream)
+        (terpri stream)
+        (write-string "\\end{code}" stream)
+        (terpri stream))))
 
 (defmethod write-code (code stream (output-type (eql :sphinx)))
   (terpri stream)
@@ -452,7 +461,7 @@ Once the literate code has been parsed and processed, it is time to resolve the 
 
 (defun post-process-output (str)
   "Resolve chunk inserts and extract inserts after processing"
-
+  (log:debug "Resolving chunks...")
   (with-output-to-string (output)
     (with-input-from-string (s str)
       (loop
@@ -641,6 +650,9 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 @subsection LaTeX
 |#
 
+(defvar *latex-highlight-syntax* nil
+  "Highlight syntax using LaTeX minted package: https://ctan.org/pkg/minted")
+
 (defgeneric gen-doc (output-type output files &rest args))
 
 (defmethod gen-doc ((output-type (eql :latex)) output files
@@ -651,6 +663,7 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
                       template-pathname
                       (syntax *syntax*)
                       (document-class *latex-document-class*)
+                      (highlight-syntax *latex-highlight-syntax*)
                       &allow-other-keys)
   "Generates a LaTeX document.
 
@@ -660,7 +673,8 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
          - subtitle: Document subtitle.
          - author: Author of the document
          - template-pathname: A custom LaTeX template file. If none is specified, a default template is used."
-  (let ((*latex-document-class* document-class))
+  (let ((*latex-document-class* document-class)
+        (*latex-highlight-syntax* highlight-syntax))
     (let ((template (cl-template:compile-template
                      (file-to-string (or template-pathname
                                          (asdf:system-relative-pathname
@@ -772,7 +786,11 @@ Markdown is another output type.
                       postlude)
                   output)))
 
-;; @extract erudite-function
+#|
+
+@extract erudite-function
+
+|#
 
 (defun call-with-destination (destination function)
   (cond
@@ -844,18 +862,25 @@ condition CONDITION is signaled in Erudite."
             (*implicit-doc* implicit-doc)
             (*implicit-code* implicit-code)
             (*short-comments-prefix* short-comments-prefix))
+        (log:config :sane :this-console)
         (when *verbose*
           (log:config :info))
         (when *debug*
           (log:config :debug))
+        (log:info "Starting. Output type: ~A" output-type)
         (apply #'gen-doc output-type
                output
                (if (listp file-or-files)
                    file-or-files
                    (list file-or-files))
-               args)))))
+               args)
+        (log:config :clear)))))
 
-;; @end extract
+#|
+
+@end extract
+
+|#
 
 ;; @include cli.lisp
 ;; @include commands.lisp

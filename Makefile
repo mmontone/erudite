@@ -6,7 +6,7 @@ CLISP=$(shell which clisp)
 CCL=$(shell which ccl)
 
 ifeq ($(LISP),SBCL)		# if compiler is sbcl
-  BUILD = $(SBCL) --noinform --disable-debugger --load cli.lisp
+  BUILD = $(SBCL) --control-stack-size 100000 --noprint --quit --load cli.lisp
   TEST = $(SBCL) --disable-debugger --eval 
 endif
 
@@ -26,8 +26,8 @@ ifeq ($(LISP),CCL)		# else if compiler is ccl
 endif
 
 ifndef LISP
-  BUILD = $(SBCL) --noinform --disable-debugger --load cli.lisp
-  TEST = $(SBCL) --disable-debugger --eval 
+  BUILD = $(SBCL) --control-stack-size 100000 --quit --noprint --load cli.lisp
+  TEST = $(SBCL) --quit --eval 
 endif
 
 erudite: ## Build erudite executable

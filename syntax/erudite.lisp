@@ -6,6 +6,7 @@
 
 ;; Erudite formatting operations are held in @ref{*erudite-syntax*} list
 (defvar *erudite-syntax* nil)
+(defvar *latex-document-class* :article)
 
 (defun find-syntax (name &optional (error-p t))
   (let ((command (gethash name *erudite-syntax*)))
@@ -199,8 +200,6 @@
 			       :simple-calls t)))
 
 ;; @subsection Syntax formatting
-
-(defvar *latex-document-class* :article)
 
 (defun format-syntax (destination syntax)
   (if (null destination)
