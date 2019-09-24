@@ -23,6 +23,32 @@ Erudite is a [Literate Programming](http://en.wikipedia.org/wiki/Literate_progra
 
 ## Quickstart
 
+Write your embedded documentation in lisp comments (`;;` and `#| … |#` are supported). Use either
+`erudite`, `latex` or `sphinx` syntax, and produce output to one of
+them or `markdown`.
+
+Example in the built-in `erudite` syntax:
+
+```
+#|
+@title Erudite
+@subtitle Literate Programming System for Common Lisp
+
+@author Mariano Montone
+@syntax erudite
+
+@section Introduction
+
+@ignore
+|#
+(in-package #:erudite)
+
+#|
+@end ignore
+```
+
+For a full example, see [erudite.lisp](erudite.lisp).
+
 Run `make` to build erudite command line if you want to run it from there, and then `sudo make install` to install.
 
 ```
@@ -80,7 +106,7 @@ Look at the `doc` directory for output examples.
 
 Processes literate lisp files and creates a document.
 
-- **pathname**: Pathname of the file to generate
+- **pathname**: Pathname of the file to generate. If `nil`, output to a string. If `t`, print to standard output.
 - **files**: Literate lisp files to compile
 - **args**: All sort of options passed to the generation functions
 - **output-type**: The kind of document to generate.
