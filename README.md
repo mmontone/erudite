@@ -23,7 +23,7 @@ Erudite is a [Literate Programming](http://en.wikipedia.org/wiki/Literate_progra
 
 ## Quickstart
 
-Write your embedded documentation in `#| … |#` comments. Use either
+Write your embedded documentation in lisp comments (`;;` and `#| … |#` are supported). Use either
 `erudite`, `latex` or `sphinx` syntax, and produce output to one of
 them or `markdown`.
 
