@@ -73,14 +73,14 @@ The command line is implemented via the @emph{com.dvl.clon} library.
   (switch :short-name "d" :long-name "debug"
           :description "Turn debugging on or off."
           :argument-style :on/off
-          :default-value nil
+          :default-value erudite::*debug*
           :env-var "DEBUG")
   (switch :short-name "id" :long-name "implicit-doc"
           :description "Treat all comments as documentation"
-          :default-value t)
+          :default-value erudite::*implicit-doc*)
   (switch :short-name "ic" :long-name "implicit-code"
           :description "Include all code in documentation"
-          :default-value t)
+          :default-value erudite::*implicit-code*)
   (path :long-name "output"
         :short-name "o"
         :argument-name "OUTPUT"
@@ -89,15 +89,16 @@ The command line is implemented via the @emph{com.dvl.clon} library.
   (enum :long-name "output-type"
         :argument-name "OUTPUT-TYPE"
         :enum (list :latex :sphinx :markdown :org)
-        :default-value :latex
+        :default-value erudite::*output-type*
         :description "The output type. One of 'latex', 'sphinx','markdown'")
   (enum :long-name "syntax"
         :argument-name "SYNTAX"
         :enum (list :erudite :latex :sphinx :markdown :org)
-        :default-value :erudite
+        :default-value erudite::*syntax*
         :description "The syntax used in source files. One of 'erudite', 'latex', 'sphinx', 'markdown'")
   (stropt :long-name "short-comments-prefix"
           :argument-name "SC-PREFIX"
+          :default-value erudite::*short-comments-prefix*
           :description "Prefix on short comments")
   (stropt :long-name "author"
           :argument-name "AUTHOR"
@@ -125,8 +126,7 @@ The command line is implemented via the @emph{com.dvl.clon} library.
            (short-comments-prefix (stringp* (clon:getopt :long-name "short-comments-prefix")))
            (output-type (clon:getopt :long-name "output-type"))
            (syntax (clon:getopt :long-name "syntax"))
-           (output (or (clon:getopt :long-name "output")
-                       t))
+           (output (clon:getopt :long-name "output"))
            (debug (clon:getopt :long-name "debug"))
            (verbose (clon:getopt :long-name "verbose"))
            (implicit-doc (clon:getopt :long-name "implicit-doc"))

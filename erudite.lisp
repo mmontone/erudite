@@ -217,7 +217,7 @@ When splitting the source in fragments, we can parse either a long comment, a sh
                                 (:GREEDY-REPETITION 0 NIL :WHITESPACE-CHAR-CLASS)
                                 (:GREEDY-REPETITION 0 1 ,comment-end)) line)
                  (write-string (string-right-trim '(#\space) comment-line) s))
-               ;; While there are lines without |#, add them to the comment source
+               ;; While there are lines without comment end string, add them to the comment source
                (when (not (search comment-end line))
                  (loop
                     :for line := (read-line stream nil)
@@ -864,7 +864,7 @@ condition CONDITION is signaled in Erudite."
                         One of :latex, :sphinx
                         Default: :latex
          - syntax: The kind of syntax used in the literate source files.
-                       One of: :erudite, :latex, :org, :sphinx.
+                       One of: :erudite, :latex, :org, :markdown, :sphinx.
                        Default: :erudite"
   (with-error-handling (catch-errors-p)
     (with-destination (output destination)
@@ -880,7 +880,17 @@ condition CONDITION is signaled in Erudite."
           (log:config :info))
         (when *debug*
           (log:config :debug))
-        (log:info "Starting. Output type: ~A" output-type)
+        (log:info "Processing ~A." file-or-files)
+        (log:debug "Arguments: ~S"
+                   (list :output-type output-type
+                         :syntax syntax
+                         :debug debug
+                         :verbose verbose
+                         :catch-errors-p catch-errors-p
+                         :code-indexing code-indexing
+                         :implicit-doc implicit-doc
+                         :implicit-code implicit-code
+                         :short-comments-prefix short-comments-prefix))
         (apply #'gen-doc output-type
                output
                (if (listp file-or-files)
