@@ -20,5 +20,6 @@
                :alexandria
                :split-sequence
                :cl-template
-               :log4cl)
+               :log4cl
+               :swank-client)
   :in-order-to ((asdf:test-op (asdf:test-op :erudite-test))))

@@ -265,6 +265,44 @@
             (setf *in-code-section* nil)
             (funcall cont)))
 
+;; @subsubsection Code evaluation
+
+;; There's experimental and incomplete support for evaluating and printing code.
+;; The eval section evaluates and prints code connecting to a SWANK instance.
+;; So, start a SWANK instance using SWANK:CREATE-SERVER, probably with :DONT-CLOSE option as T, and then
+;; For example:
+;; (concatenate 'string "hello" "world") :
+;; @eval
+;; (concatenate 'string "hello" "world")
+;; @end eval
+
+(defvar *current-eval* nil)
+(defvar *swank-connection* nil)
+(defvar *swank-host* "localhost")
+(defvar *swank-port* 4005)
+
+(define-command begin-eval
+  (:match (line)
+          (scan "@eval" line))
+  (:process (line input output cont)
+            (let ((*current-eval* (list :output (make-string-output-stream)
+                                        :original-output output)))
+              (funcall cont :output (getf *current-eval* :output)))))
+
+(define-command end-eval
+  (:match (line)
+          (scan "@end eval" line))
+  (:process (line input output cont)
+            (when (null *swank-connection*)
+              (setf *swank-connection* (swank-client:slime-connect *swank-host* *swank-port*)))
+            (when (null *swank-connection*)
+              (error "Cannot evaluate code. Error connecting to swank."))
+            (when *swank-connection*
+              (let ((result (swank-client:slime-eval (read-from-string (get-output-stream-string (getf *current-eval* :output))) *swank-connection*)))
+                (write result :stream (getf *current-eval* :original-output))))
+            ;; Restore the output
+            (funcall cont :output (getf *current-eval* :original-output))))
+
 ;; (defvar *in-doc-section* nil)
 
 ;; (define-command begin-doc
