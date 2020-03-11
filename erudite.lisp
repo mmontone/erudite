@@ -207,23 +207,29 @@ When splitting the source in fragments, we can parse either a long comment, a sh
     ;; Extract the comment source
     (let ((comment
            (with-output-to-string (s)
-             ;;; First, add the first comment line
-             (register-groups-bind (comment-line) ("\\#\\|\\s*(.+)" line)
-               (write-string comment-line s))
-                                        ; While there are lines without |#, add them to the comment source
-             (loop
-                :for line := (read-line stream nil)
-                :while (and line (not (search "|#" line)))
-                :do
-                (terpri s)
-                (write-string line s)
-                :finally
-                ;; Finally, extract the last comment line
-                (if line
-                    (register-groups-bind (comment-line) ("\\s*(.+)\\|\\#" line)
-                      (when comment-line
-                        (write-string comment-line s)))
-                    (error "EOF: Could not complete comment parsing"))))))
+             ;; First, add the first comment line
+             (register-groups-bind (comment-line)
+                 ('(:SEQUENCE "#|"
+                    (:GREEDY-REPETITION 0 NIL :WHITESPACE-CHAR-CLASS)
+                    (:REGISTER (:GREEDY-REPETITION 0 NIL (:sequence (:negative-lookahead "|#") :everything)))
+                    (:GREEDY-REPETITION 0 NIL :WHITESPACE-CHAR-CLASS)
+                    (:GREEDY-REPETITION 0 1 "|#")) line)
+               (write-string (string-right-trim '(#\space) comment-line) s))
+             ;; While there are lines without |#, add them to the comment source
+             (when (not (search "|#" line))
+               (loop
+                  :for line := (read-line stream nil)
+                  :while (and line (not (search "|#" line)))
+                  :do
+                  (terpri s)
+                  (write-string line s)
+                  :finally
+                  ;; Finally, extract the last comment line
+                  (if line
+                      (register-groups-bind (comment-line) ("\\s*(.+)\\s*\\|\\#" line)
+                        (when comment-line
+                          (write-string comment-line s)))
+                      (error "EOF: Could not complete comment parsing")))))))
       (list :doc comment))))
 
 (defun parse-long-comment-explicit (line stream)

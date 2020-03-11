@@ -45,7 +45,7 @@ a long comment
        '(:DOC "this is
 a long comment")))
   (is (equalp
-       (with-input-from-string (s "#| this is long comment in one line |#")
+       (with-input-from-string (s "#| this is a long comment in one line |#")
          (erudite::parse-long-comment (read-line s) s))
        '(:DOC "this is a long comment in one line")))
   (is (null
