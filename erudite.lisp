@@ -383,6 +383,11 @@ When splitting the source in fragments, we can parse either a long comment, a sh
   (terpri stream)
   (funcall cont))
 
+(defmethod process-doc ((syntax (eql :markdown)) output-type line stream cont)
+  (write-string line stream)
+  (terpri stream)
+  (funcall cont))
+
 (defmethod process-doc ((syntax (eql :erudite)) output-type line stream cont)
   (let ((formatted-line line))
     (loop
