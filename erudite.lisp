@@ -399,6 +399,9 @@ When splitting the source in fragments, we can parse either a long comment, a sh
 (defmethod write-doc-line (line stream output-type)
   (write-string line stream))
 
+(defvar *latex-highlight-syntax* nil
+  "Highlight syntax using LaTeX minted package: https://ctan.org/pkg/minted")
+
 (defmethod write-code (code stream (output-type (eql :latex)))
   (if *latex-highlight-syntax*
       (progn
@@ -649,9 +652,6 @@ Code blocks in Sphinx are indented. The indent-code function takes care of that:
 
 @subsection LaTeX
 |#
-
-(defvar *latex-highlight-syntax* nil
-  "Highlight syntax using LaTeX minted package: https://ctan.org/pkg/minted")
 
 (defgeneric gen-doc (output-type output files &rest args))
 
