@@ -96,6 +96,9 @@ The command line is implemented via the @emph{com.dvl.clon} library.
         :enum (list :erudite :latex :sphinx :markdown :org)
         :default-value erudite::*syntax*
         :description "The syntax used in source files. One of 'erudite', 'latex', 'sphinx', 'markdown'")
+  (switch :long-name "highlight-syntax"
+          :description "Highlight syntax when available"
+          :default-value t)
   (stropt :long-name "short-comments-prefix"
           :argument-name "SC-PREFIX"
           :default-value erudite::*short-comments-prefix*
@@ -126,6 +129,7 @@ The command line is implemented via the @emph{com.dvl.clon} library.
            (short-comments-prefix (stringp* (clon:getopt :long-name "short-comments-prefix")))
            (output-type (clon:getopt :long-name "output-type"))
            (syntax (clon:getopt :long-name "syntax"))
+           (highlight-syntax (clon:getopt :long-name "highlight-syntax"))
            (output (clon:getopt :long-name "output"))
            (debug (clon:getopt :long-name "debug"))
            (verbose (clon:getopt :long-name "verbose"))
@@ -134,15 +138,16 @@ The command line is implemented via the @emph{com.dvl.clon} library.
            (files (mapcar #'pathname (clon:remainder))))
        (if (null files)
            (format t "Error: provide the files to process~%")
-           (erudite:erudite output files
-                            :debug debug
-                            :verbose verbose
-                            :implicit-doc implicit-doc
-                            :implicit-code implicit-code
-                            :short-comments-prefix short-comments-prefix
-                            :title title
-                            :author author
-                            :output-type output-type
-                            :syntax syntax))))))
+           (let ((erudite::*latex-highlight-syntax* highlight-syntax))
+             (erudite:erudite output files
+                              :debug debug
+                              :verbose verbose
+                              :implicit-doc implicit-doc
+                              :implicit-code implicit-code
+                              :short-comments-prefix short-comments-prefix
+                              :title title
+                              :author author
+                              :output-type output-type
+                              :syntax syntax)))))))
 
 (clon:dump "erudite" main)

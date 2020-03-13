@@ -1,9 +1,9 @@
 .PHONY: all clean sphinx
 
 erudite.pdf: erudite.tex
-	pdflatex erudite.tex
+	pdflatex -shell-escape erudite.tex
 	makeindex erudite.idx
-	pdflatex erudite.tex
+	pdflatex -shell-escape erudite.tex
 
 erudite.tex:
 	erudite -o erudite.tex --output-type=latex ../erudite.lisp

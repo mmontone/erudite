@@ -422,7 +422,7 @@ When splitting the source in fragments, we can parse either a long comment, a sh
         (terpri stream)
         (write-string code stream)
         (terpri stream)
-        (write-string "\\end{minted}" stream)
+        (write-string (concatenate 'string "\\end" "{minted}") stream)
         (terpri stream))
       (progn
         (write-string "\\begin{code}" stream)
