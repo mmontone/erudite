@@ -296,7 +296,8 @@
             (when (null *swank-connection*)
               (setf *swank-connection* (swank-client:slime-connect *swank-host* *swank-port*)))
             (when (null *swank-connection*)
-              (error "Cannot evaluate code. Error connecting to swank."))
+              (error "Could not connect to a SWANK instance to evaluate code.~%I'm trying to connect to a SWANK instance at ~a:~a.~%To change host and port, set *swank-host* and *swank-port*.~%To start a SWANK server to connect to, run SWANK:CREATE-SERVER, with DONT-CLOSE as T."
+                     *swank-host* *swank-port*))
             (when *swank-connection*
               (let ((result (swank-client:slime-eval (read-from-string (get-output-stream-string (getf *current-eval* :output))) *swank-connection*)))
                 (write result :stream (getf *current-eval* :original-output))))
