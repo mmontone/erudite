@@ -3,6 +3,9 @@
   :author "Mariano Montone <marianomontone@gmail.com>"
   :license "MIT"
   :serial t
+  :long-description
+  #.(uiop:read-file-string
+     (uiop:subpathname *load-pathname* "README.md"))
   :components ((:file "package")
                (:file "config")
                (:file "util")
