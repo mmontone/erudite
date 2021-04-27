@@ -3,6 +3,7 @@
   :author "Mariano Montone <marianomontone@gmail.com>"
   :license "MIT"
   :serial t
+  :homepage "https://github.com/mmontone/erudite"              
   :long-description
   #.(uiop:read-file-string
      (uiop:subpathname *load-pathname* "README.md"))
