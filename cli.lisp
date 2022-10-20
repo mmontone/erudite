@@ -139,7 +139,7 @@ The command line is implemented via the @emph{com.dvl.clon} library.
        (if (null files)
            (format t "Error: provide the files to process~%")
            (let ((erudite::*latex-highlight-syntax* highlight-syntax))
-             (erudite:erudite output files
+             (erudite:erudite (or output t) files
                               :debug debug
                               :verbose verbose
                               :implicit-doc implicit-doc
